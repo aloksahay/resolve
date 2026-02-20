@@ -41,7 +41,7 @@ export async function resolveWithAI(
   const prompt = buildPrompt(market, metadata);
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
@@ -77,7 +77,7 @@ export async function resolveWithAI(
     marketId: market.id,
     question: market.question,
     result,
-    aiModel: "gemini-2.0-flash",
+    aiModel: "gemini-2.5-flash",
     prompt,
   };
 }
