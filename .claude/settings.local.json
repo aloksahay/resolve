@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.0g.ai)",
+      "Bash(npm install:*)",
+      "Bash(npx hardhat:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
