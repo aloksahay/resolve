@@ -1,35 +1,34 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { config } from "../config";
 import { MarketData, MarketMetadata, ResolutionResult, ResolutionEvidence } from "./types";
 
-const client = new OpenAI({
-  apiKey: config.computeApiKey,
-  baseURL: config.computeBaseUrl,
-});
+const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
 function buildPrompt(market: MarketData, metadata: MarketMetadata | null): string {
+  const now = new Date().toISOString();
+  const deadline = new Date(market.deadline * 1000).toISOString();
+
   const parts = [
-    "You are a prediction market resolver. Your job is to determine whether a predicted event has occurred based on your knowledge.",
+    `Today is ${now}.`,
+    `You are resolving a prediction market.`,
     "",
-    `Market Question: "${market.question}"`,
-    `Deadline: ${new Date(market.deadline * 1000).toISOString()}`,
+    `Question: "${market.question}"`,
+    `Deadline: ${deadline}`,
   ];
 
   if (metadata) {
-    parts.push(`Description: ${metadata.description}`);
-    parts.push(`Resolution Criteria: ${metadata.resolutionCriteria}`);
-    if (metadata.sourceUrls.length > 0) {
-      parts.push(`Reference Sources: ${metadata.sourceUrls.join(", ")}`);
-    }
+    if (metadata.description) parts.push(`Description: ${metadata.description}`);
+    if (metadata.resolutionCriteria) parts.push(`Resolution Criteria: ${metadata.resolutionCriteria}`);
+    if (metadata.sourceUrls.length > 0) parts.push(`Reference Sources: ${metadata.sourceUrls.join(", ")}`);
   }
 
   parts.push(
     "",
-    "Based on your knowledge, determine if this event has occurred.",
-    "Respond ONLY with valid JSON in this exact format:",
-    '{ "outcome": true/false, "confidence": 0.0-1.0, "reasoning": "your explanation", "sources": ["source1", "source2"] }',
+    "Search the web for current, real-time information to answer this question accurately.",
+    "Then respond ONLY with valid JSON in this exact format:",
+    '{ "outcome": true/false, "confidence": 0.0-1.0, "reasoning": "explanation citing facts you found", "sources": ["url1", "url2"] }',
     "",
-    "If you are unsure, set confidence below 0.5. Only set outcome to true if the event clearly happened."
+    "Set outcome=true if the event clearly occurred or the condition is met. Set confidence below 0.7 if uncertain."
   );
 
   return parts.join("\n");
@@ -41,17 +40,22 @@ export async function resolveWithAI(
 ): Promise<ResolutionEvidence> {
   const prompt = buildPrompt(market, metadata);
 
-  const response = await client.chat.completions.create({
-    model: "qwen/qwen-2.5-7b-instruct",
-    messages: [
-      { role: "system", content: "You are a factual prediction market resolution oracle. Always respond with valid JSON." },
-      { role: "user", content: prompt },
-    ],
-    temperature: 0.1,
-    max_tokens: 1024,
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      temperature: 0.1,
+    },
   });
 
-  const content = response.choices[0]?.message?.content || "";
+  const content = response.text ?? "";
+
+  // Pull source URLs from grounding metadata
+  const groundingChunks = (response.candidates?.[0]?.groundingMetadata as any)?.groundingChunks ?? [];
+  const groundedSources: string[] = groundingChunks
+    .map((chunk: any) => chunk.web?.uri)
+    .filter(Boolean);
 
   let result: ResolutionResult;
   try {
@@ -62,7 +66,7 @@ export async function resolveWithAI(
       outcome: Boolean(parsed.outcome),
       confidence: Number(parsed.confidence),
       reasoning: String(parsed.reasoning || ""),
-      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+      sources: groundedSources.length > 0 ? groundedSources : (Array.isArray(parsed.sources) ? parsed.sources : []),
       resolvedAt: new Date().toISOString(),
     };
   } catch (e) {
@@ -73,7 +77,7 @@ export async function resolveWithAI(
     marketId: market.id,
     question: market.question,
     result,
-    aiModel: "qwen/qwen-2.5-7b-instruct",
+    aiModel: "gemini-2.0-flash",
     prompt,
   };
 }

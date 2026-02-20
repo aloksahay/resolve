@@ -159,33 +159,131 @@ bot.callbackQuery(/^bet:(\d+):(yes|no)$/, async (ctx) => {
   );
 });
 
-// Handle amount reply for pending bet
+// Handle all text: pending bet amounts first, then natural language agent
 bot.on("message:text", async (ctx) => {
   const userId = ctx.from.id;
-  const pending = pendingBets.get(userId);
-  if (!pending) return;
+  const text = ctx.message.text.trim();
 
-  const amount = parseFloat(ctx.message.text.trim());
-  if (isNaN(amount) || amount <= 0) {
-    return ctx.reply("Invalid amount. Please reply with a number like `0.1`", { parse_mode: "MarkdownV2" });
+  // If user is in the middle of a button-triggered bet, expect a number
+  const pending = pendingBets.get(userId);
+  if (pending) {
+    const amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) {
+      return ctx.reply("Invalid amount. Please reply with a number like `0\\.1`", { parse_mode: "MarkdownV2" });
+    }
+    pendingBets.delete(userId);
+    const amountWei = ethers.parseEther(amount.toString()).toString();
+    await ctx.reply(`⏳ Placing ${amount} A0GI bet (${pending.betYes ? "YES" : "NO"}) on market #${pending.marketId}...`);
+    try {
+      const txHash = await chain.placeBet(pending.marketId, pending.betYes, amountWei);
+      await ctx.reply(
+        `✅ Bet placed\\!\nMarket: #${pending.marketId}\nSide: *${pending.betYes ? "YES" : "NO"}*\nAmount: ${amount} A0GI\n🔗 Tx: \`${txHash}\``,
+        { parse_mode: "MarkdownV2" }
+      );
+    } catch (e: any) {
+      await ctx.reply(`Error: ${e.message}`);
+    }
+    return;
   }
 
-  pendingBets.delete(userId);
-  const amountWei = ethers.parseEther(amount.toString()).toString();
+  // Skip commands (handled separately above)
+  if (text.startsWith("/")) return;
 
-  await ctx.reply(`⏳ Placing ${amount} A0GI bet (${pending.betYes ? "YES" : "NO"}) on market #${pending.marketId}...`);
+  // Natural language → agent
+  const thinking = await ctx.reply("🤖 Thinking...");
   try {
-    const txHash = await chain.placeBet(pending.marketId, pending.betYes, amountWei);
-    await ctx.reply(
-      `✅ Bet placed\\!\n` +
-      `Market: #${pending.marketId}\n` +
-      `Side: *${pending.betYes ? "YES" : "NO"}*\n` +
-      `Amount: ${amount} A0GI\n` +
-      `🔗 Tx: \`${txHash}\``,
-      { parse_mode: "MarkdownV2" }
-    );
+    const action = await parseUserIntent(text);
+
+    switch (action.type) {
+      case "list_markets": {
+        const markets = await chain.getAllMarkets();
+        if (markets.length === 0) {
+          await ctx.reply("No markets yet. Try: *\"Will ETH hit $3000 by April?\"* to create one.", { parse_mode: "MarkdownV2" });
+          break;
+        }
+        for (const m of markets) {
+          const kb = new InlineKeyboard()
+            .text("✅ Bet YES", `bet:${m.id}:yes`)
+            .text("❌ Bet NO", `bet:${m.id}:no`);
+          await ctx.reply(formatMarket(m), {
+            parse_mode: "MarkdownV2",
+            reply_markup: m.outcome === "Pending" ? kb : undefined,
+          });
+        }
+        break;
+      }
+
+      case "get_market": {
+        const m = await chain.getMarket(action.marketId);
+        const kb = new InlineKeyboard()
+          .text("✅ Bet YES", `bet:${m.id}:yes`)
+          .text("❌ Bet NO", `bet:${m.id}:no`);
+        await ctx.reply(formatMarket(m), {
+          parse_mode: "MarkdownV2",
+          reply_markup: m.outcome === "Pending" ? kb : undefined,
+        });
+        break;
+      }
+
+      case "create_market": {
+        await ctx.reply(`⏳ Creating market on\\-chain...\n❓ ${escMd(action.question)}`, { parse_mode: "MarkdownV2" });
+        const { marketId, txHash } = await chain.createMarket(action.question, action.deadline, "0x" + "0".repeat(64));
+        await ctx.reply(
+          `✅ Market #${marketId} created\\!\n❓ ${escMd(action.question)}\n⏰ Deadline: ${escMd(new Date(action.deadline * 1000).toUTCString())}\n🔗 Tx: \`${txHash}\``,
+          { parse_mode: "MarkdownV2" }
+        );
+        npc.placeNpcBets(marketId).then(({ npc1TxHash, npc2TxHash }) => {
+          ctx.reply(
+            `🤖 NPC bets placed\\!\n✅ NPC YES: \`${npc1TxHash ?? "failed"}\`\n❌ NPC NO: \`${npc2TxHash ?? "failed"}\``,
+            { parse_mode: "MarkdownV2" }
+          ).catch(() => {});
+        }).catch(() => {});
+        break;
+      }
+
+      case "place_bet": {
+        const amountWei = ethers.parseEther(action.amountA0gi.toString()).toString();
+        await ctx.reply(`⏳ Placing ${action.amountA0gi} A0GI ${action.betYes ? "YES ✅" : "NO ❌"} bet on market #${action.marketId}...`);
+        const txHash = await chain.placeBet(action.marketId, action.betYes, amountWei);
+        await ctx.reply(
+          `✅ Bet placed\\!\nMarket: #${action.marketId}\nSide: *${action.betYes ? "YES ✅" : "NO ❌"}*\nAmount: ${action.amountA0gi} A0GI\n🔗 Tx: \`${txHash}\``,
+          { parse_mode: "MarkdownV2" }
+        );
+        break;
+      }
+
+      case "resolve_market": {
+        const market = await chain.getMarket(action.marketId);
+        if (market.outcome !== "Pending") {
+          await ctx.reply(`Market #${action.marketId} is already resolved: *${market.outcome}*`, { parse_mode: "MarkdownV2" });
+          break;
+        }
+        await ctx.reply(`⏳ Asking AI to resolve market #${action.marketId}...`);
+        const evidence = await resolver.resolveWithAI(market, null);
+        if (!resolver.meetsConfidenceThreshold(evidence)) {
+          await ctx.reply(
+            `⚠️ AI confidence too low \\(${evidence.result.confidence}\\) to resolve\\.\nReasoning: ${escMd(evidence.result.reasoning)}`,
+            { parse_mode: "MarkdownV2" }
+          );
+          break;
+        }
+        const txHash = await chain.resolveMarket(action.marketId, evidence.result.outcome);
+        await ctx.reply(
+          `🏁 Market #${action.marketId} resolved\\!\nOutcome: *${evidence.result.outcome ? "YES ✅" : "NO ❌"}*\nConfidence: ${(evidence.result.confidence * 100).toFixed(0)}%\nReasoning: ${escMd(evidence.result.reasoning)}\n🔗 Tx: \`${txHash}\``,
+          { parse_mode: "MarkdownV2" }
+        );
+        break;
+      }
+
+      case "clarify":
+        await ctx.reply(`❓ ${escMd(action.message)}`, { parse_mode: "MarkdownV2" });
+        break;
+
+      default:
+        await ctx.reply(`🤷 ${escMd((action as any).message || "I didn't understand that.")}`, { parse_mode: "MarkdownV2" });
+    }
   } catch (e: any) {
-    await ctx.reply(`Error placing bet: ${e.message}`);
+    await ctx.reply(`Error: ${escMd(e.message)}`, { parse_mode: "MarkdownV2" });
   }
 });
 
