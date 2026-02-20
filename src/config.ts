@@ -19,6 +19,10 @@ export const config = {
   computeApiKey: process.env.COMPUTE_API_KEY || "",
   computeBaseUrl: process.env.COMPUTE_BASE_URL || "https://chat-api.0g.ai/v1",
 
+  npcBettor1Key: process.env.NPC_BETTOR_1_KEY || "",
+  npcBettor2Key: process.env.NPC_BETTOR_2_KEY || "",
+  npcBetAmountWei: process.env.NPC_BET_AMOUNT_WEI || "5000000000000000",
+
   port: Number(process.env.PORT || "3000"),
   confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || "0.7"),
 };

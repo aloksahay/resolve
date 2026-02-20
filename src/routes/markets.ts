@@ -3,6 +3,7 @@ import { z } from "zod";
 import * as chain from "../services/chain";
 import * as storage from "../services/storage";
 import * as resolver from "../services/resolver";
+import * as npc from "../services/npc";
 import { MarketMetadata } from "../services/types";
 
 const router = Router();
@@ -16,8 +17,9 @@ const CreateMarketSchema = z.object({
   tags: z.array(z.string()).optional().default([]),
 });
 
+// Strictly binary: betYes must be exactly true or false (not truthy/falsy values)
 const PlaceBetSchema = z.object({
-  betYes: z.boolean(),
+  betYes: z.boolean({ required_error: "betYes is required", invalid_type_error: "betYes must be exactly true or false" }),
   amountWei: z.string().regex(/^\d+$/, "Must be a wei amount string"),
 });
 
@@ -52,13 +54,20 @@ router.post("/", async (req: Request, res: Response) => {
       storageRoot
     );
 
+    // Respond immediately, then fire NPC bets in the background
     res.status(201).json({
       marketId,
       txHash,
       storageRoot,
       question: body.question,
       deadline: deadlineTimestamp,
+      npcAddresses: npc.getNpcAddresses(),
     });
+
+    // Non-blocking NPC auto-bets (one YES, one NO)
+    npc.placeNpcBets(marketId).catch((e) =>
+      console.error("NPC auto-bet error:", e.message)
+    );
   } catch (e: any) {
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: "Validation failed", details: e.errors });
