@@ -10,7 +10,8 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "WebSearch",
-      "WebFetch(domain:chainscan-galileo.0g.ai)"
+      "WebFetch(domain:chainscan-galileo.0g.ai)",
+      "Bash(node:*)"
     ]
   }
 }
