@@ -42,7 +42,7 @@ export async function resolveWithAI(
   const prompt = buildPrompt(market, metadata);
 
   const response = await client.chat.completions.create({
-    model: "deepseek-chat",
+    model: "qwen/qwen-2.5-7b-instruct",
     messages: [
       { role: "system", content: "You are a factual prediction market resolution oracle. Always respond with valid JSON." },
       { role: "user", content: prompt },
@@ -73,7 +73,7 @@ export async function resolveWithAI(
     marketId: market.id,
     question: market.question,
     result,
-    aiModel: "deepseek-chat",
+    aiModel: "qwen/qwen-2.5-7b-instruct",
     prompt,
   };
 }

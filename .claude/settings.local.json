@@ -4,7 +4,11 @@
       "WebFetch(domain:docs.0g.ai)",
       "Bash(npm install:*)",
       "Bash(npx hardhat:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx tsx:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
