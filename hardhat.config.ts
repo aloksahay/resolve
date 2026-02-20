@@ -13,6 +13,21 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
+  etherscan: {
+    apiKey: {
+      galileo: "no-api-key",
+    },
+    customChains: [
+      {
+        network: "galileo",
+        chainId: 16602,
+        urls: {
+          apiURL: "https://chainscan-galileo.0g.ai/open/api",
+          browserURL: "https://chainscan-galileo.0g.ai",
+        },
+      },
+    ],
+  },
 };
 
 export default config;

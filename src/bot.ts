@@ -26,8 +26,8 @@ function formatMarket(m: Awaited<ReturnType<typeof chain.getMarket>>) {
     `📊 *Market #${m.id}*`,
     `❓ ${escMd(m.question)}`,
     `⏰ Deadline: ${escMd(deadline)}`,
-    `✅ YES pool: ${yesEth} A0GI (${yesOdds}%)`,
-    `❌ NO pool: ${noEth} A0GI (${noOdds}%)`,
+    `✅ YES pool: ${escMd(yesEth)} A0GI \\(${escMd(yesOdds)}%\\)`,
+    `❌ NO pool: ${escMd(noEth)} A0GI \\(${escMd(noOdds)}%\\)`,
     `🔖 Status: *${m.outcome}*`,
   ].join("\n");
 }
@@ -177,7 +177,7 @@ bot.on("message:text", async (ctx) => {
     try {
       const txHash = await chain.placeBet(pending.marketId, pending.betYes, amountWei);
       await ctx.reply(
-        `✅ Bet placed\\!\nMarket: #${pending.marketId}\nSide: *${pending.betYes ? "YES" : "NO"}*\nAmount: ${amount} A0GI\n🔗 Tx: \`${txHash}\``,
+        `✅ Bet placed\\!\nMarket: #${pending.marketId}\nSide: *${pending.betYes ? "YES" : "NO"}*\nAmount: ${escMd(String(amount))} A0GI\n🔗 Tx: \`${txHash}\``,
         { parse_mode: "MarkdownV2" }
       );
     } catch (e: any) {
@@ -246,7 +246,7 @@ bot.on("message:text", async (ctx) => {
         await ctx.reply(`⏳ Placing ${action.amountA0gi} A0GI ${action.betYes ? "YES ✅" : "NO ❌"} bet on market #${action.marketId}...`);
         const txHash = await chain.placeBet(action.marketId, action.betYes, amountWei);
         await ctx.reply(
-          `✅ Bet placed\\!\nMarket: #${action.marketId}\nSide: *${action.betYes ? "YES ✅" : "NO ❌"}*\nAmount: ${action.amountA0gi} A0GI\n🔗 Tx: \`${txHash}\``,
+          `✅ Bet placed\\!\nMarket: #${action.marketId}\nSide: *${action.betYes ? "YES ✅" : "NO ❌"}*\nAmount: ${escMd(String(action.amountA0gi))} A0GI\n🔗 Tx: \`${txHash}\``,
           { parse_mode: "MarkdownV2" }
         );
         break;

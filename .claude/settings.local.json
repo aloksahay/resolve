@@ -8,7 +8,9 @@
       "Bash(npx tsx:*)",
       "Bash(curl:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "WebSearch",
+      "WebFetch(domain:chainscan-galileo.0g.ai)"
     ]
   }
 }
