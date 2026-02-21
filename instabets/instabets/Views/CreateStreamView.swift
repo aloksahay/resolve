@@ -25,13 +25,15 @@ private struct LoopingVideoBackground: UIViewRepresentable {
         view.backgroundColor = .black
         view.playerLayer.videoGravity = .resizeAspectFill
 
-        if let url = Bundle.main.url(forResource: name, withExtension: "mp4", subdirectory: "Assets") {
+        if let url = Bundle.main.url(forResource: name, withExtension: "mp4") {
             let item = AVPlayerItem(url: url)
             let player = AVQueuePlayer()
             context.coordinator.looper = AVPlayerLooper(player: player, templateItem: item)
             context.coordinator.player = player
             view.playerLayer.player = player
             player.play()
+        } else {
+            print("⚠️ Could not find video file '\(name).mp4' in bundle")
         }
         return view
     }
