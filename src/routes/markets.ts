@@ -4,7 +4,10 @@ import * as chain from "../services/chain";
 import * as storage from "../services/storage";
 import * as resolver from "../services/resolver";
 import * as npc from "../services/npc";
-import { MarketMetadata } from "../services/types";
+import * as machinefi from "../services/machinefi";
+import * as jobStore from "../services/jobStore";
+import { MarketMetadata, LiveMarketMetadata } from "../services/types";
+import { config } from "../config";
 
 const router = Router();
 
@@ -73,6 +76,77 @@ router.post("/", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Validation failed", details: e.errors });
     }
     console.error("Create market error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const CreateLiveMarketSchema = z.object({
+  condition: z.string().min(5).max(500),
+  stream_url: z.string().url(),
+  duration_seconds: z.number().int().positive().default(60),
+});
+
+// POST /markets/live — Create a market monitored by MachineFi live stream
+router.post("/live", async (req: Request, res: Response) => {
+  try {
+    const body = CreateLiveMarketSchema.parse(req.body);
+
+    const deadline = Math.floor(Date.now() / 1000) + body.duration_seconds;
+
+    const metadata: LiveMarketMetadata = {
+      question: body.condition,
+      description: `Live stream prediction: ${body.condition}`,
+      resolutionCriteria: `MachineFi will monitor the stream and resolve YES when: ${body.condition}`,
+      sourceUrls: [body.stream_url],
+      tags: ["live", "machinefi"],
+      createdAt: new Date().toISOString(),
+      streamUrl: body.stream_url,
+      machineFiJobId: "",
+      condition: body.condition,
+    };
+
+    // Upload metadata to 0G Storage (fail-soft)
+    let storageRoot: string;
+    try {
+      storageRoot = await storage.uploadJson(metadata);
+    } catch (e: any) {
+      console.warn("Storage upload failed, using empty root:", e.message);
+      storageRoot = "0x" + "0".repeat(64);
+    }
+
+    // Create market on-chain
+    const { marketId, txHash } = await chain.createMarket(body.condition, deadline, storageRoot);
+
+    // Start MachineFi live monitor
+    const webhookUrl = `${config.webhookBaseUrl}/webhook/machinefi`;
+    let jobId: string | null = null;
+    try {
+      jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl);
+      jobStore.addJob(jobId, marketId, deadline);
+      console.log(`MachineFi job ${jobId} started for market ${marketId}`);
+    } catch (e: any) {
+      console.error("MachineFi startLiveMonitor failed:", e.message);
+    }
+
+    res.status(201).json({
+      marketId,
+      txHash,
+      jobId,
+      storageRoot,
+      condition: body.condition,
+      stream_url: body.stream_url,
+      deadline,
+    });
+
+    // Non-blocking NPC auto-bets
+    npc.placeNpcBets(marketId).catch((e) =>
+      console.error("NPC auto-bet error:", e.message)
+    );
+  } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: e.errors });
+    }
+    console.error("Create live market error:", e);
     res.status(500).json({ error: e.message });
   }
 });

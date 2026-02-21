@@ -4,3 +4,6 @@ dist/
 cache/
 artifacts/
 typechain-types/
+
+# iOS app secrets
+instabets/instabets/Config.swift

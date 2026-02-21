@@ -27,4 +27,9 @@ export const config = {
 
   port: Number(process.env.PORT || "3000"),
   confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || "0.7"),
+
+  machineFiApiKey: process.env.MACHINEFI_API_KEY || "",
+  machineFiBaseUrl: process.env.MACHINEFI_BASE_URL || "https://trio.machinefi.com/api",
+  webhookBaseUrl: process.env.WEBHOOK_BASE_URL || "",
+  defaultMarketDurationSeconds: Number(process.env.DEFAULT_MARKET_DURATION || "60"),
 };

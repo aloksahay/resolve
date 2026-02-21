@@ -36,7 +36,8 @@
       "WebFetch(domain:api.github.com)",
       "Bash(npm show:*)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(npm pack:*)"
+      "Bash(npm pack:*)",
+      "WebFetch(domain:docs.machinefi.com)"
     ]
   }
 }

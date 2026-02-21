@@ -18,6 +18,12 @@ export interface MarketMetadata {
   createdAt: string;
 }
 
+export interface LiveMarketMetadata extends MarketMetadata {
+  streamUrl: string;
+  machineFiJobId: string;
+  condition: string;
+}
+
 export interface ResolutionResult {
   outcome: boolean;
   confidence: number;

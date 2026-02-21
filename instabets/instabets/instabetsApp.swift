@@ -1,8 +1,7 @@
+
 //
 //  instabetsApp.swift
 //  instabets
-//
-//  Created by Alok Sahay on 20.02.2026.
 //
 
 import SwiftUI
