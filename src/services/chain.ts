@@ -99,6 +99,26 @@ export async function getAllMarkets(): Promise<MarketData[]> {
   return markets;
 }
 
+export interface BetEvent {
+  bettor: string;
+  betYes: boolean;
+  amountWei: string;
+  txHash: string;
+  blockNumber: number;
+}
+
+export async function getMarketBets(marketId: number): Promise<BetEvent[]> {
+  const filter = contract.filters.BetPlaced(marketId);
+  const events = await contract.queryFilter(filter);
+  return events.map((e: any) => ({
+    bettor: e.args.bettor,
+    betYes: e.args.betYes,
+    amountWei: e.args.amount.toString(),
+    txHash: e.transactionHash,
+    blockNumber: e.blockNumber,
+  }));
+}
+
 export async function setStorageRoot(
   marketId: number,
   storageRoot: string

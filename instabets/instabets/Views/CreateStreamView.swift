@@ -45,6 +45,22 @@ struct CreateStreamView: View {
                     actionBar
                 }
                 .padding()
+
+                // Countdown timer — top-right corner during live
+                if case .live(let seconds, _) = viewModel.phase {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text(timeString(seconds))
+                                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
+                                .padding(.trailing, 16)
+                                .padding(.top, 8)
+                        }
+                        Spacer()
+                    }
+                }
             }
             .navigationTitle("Go Live")
             .navigationBarTitleDisplayMode(.inline)
@@ -108,6 +124,7 @@ struct CreateStreamView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .disabled(viewModel.condition.trimmingCharacters(in: .whitespaces).count < 5)
 
         case .readyToGo(let streamKey, let playbackID):
             Button {
@@ -143,7 +160,7 @@ struct CreateStreamView: View {
     // MARK: - Phase-specific views
 
     private var idleView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 64))
                 .foregroundStyle(.white)
@@ -153,6 +170,12 @@ struct CreateStreamView: View {
             Text("Stream goes live instantly. Your video is\nstored on 0G Network after it ends.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.gray)
+
+            TextField("What's your prediction? (e.g. I will do 10 pushups)", text: $viewModel.condition, axis: .vertical)
+                .lineLimit(2...4)
+                .padding(12)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .foregroundStyle(.white)
         }
     }
 
@@ -163,60 +186,24 @@ struct CreateStreamView: View {
                 .foregroundStyle(.white)
             Text("Tap Go Live when you're ready.")
                 .foregroundStyle(.secondary)
-            if let url = viewModel.shareURL {
-                ShareLink(item: url) {
-                    Label("Copy share link", systemImage: "link")
-                        .font(.caption)
-                }
-                .foregroundStyle(.blue)
-            }
         }
     }
 
     private func liveView(seconds: Int, playbackID: String) -> some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(.red)
-                    .frame(width: 10, height: 10)
-                Text("LIVE")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-            }
-            Text("\(seconds)")
-                .font(.system(size: 72, weight: .bold, design: .rounded))
-                .foregroundStyle(seconds <= 10 ? .red : .white)
-                .contentTransition(.numericText(countsDown: true))
-                .animation(.default, value: seconds)
-            Text("seconds remaining")
-                .foregroundStyle(.secondary)
-
-            if let url = viewModel.shareURL {
-                Button {
-                    showPlayer = true
-                } label: {
-                    Label("Watch in app", systemImage: "play.circle")
-                }
+        HStack(spacing: 6) {
+            Circle()
+                .fill(.red)
+                .frame(width: 10, height: 10)
+            Text("LIVE")
+                .font(.headline)
                 .foregroundStyle(.white)
-
-                ShareLink("Share stream link", item: url)
-                    .font(.caption)
-                    .foregroundStyle(.blue)
-
-                // Show playbackID for in-app player navigation
-                Text(url.absoluteString)
-                    .font(.caption2)
-                    .foregroundStyle(.gray)
-                    .lineLimit(1)
-            }
         }
     }
 
     private func completeView(cid: String, playbackID: String) -> some View {
         VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.green)
+            outcomeBadge(outcome: viewModel.marketOutcome)
+
             Text("Stream Complete")
                 .font(.title2.bold())
                 .foregroundStyle(.white)
@@ -243,6 +230,24 @@ struct CreateStreamView: View {
         }
     }
 
+    @ViewBuilder
+    private func outcomeBadge(outcome: String) -> some View {
+        switch outcome {
+        case "Yes":
+            Label("YES — Condition met!", systemImage: "checkmark.seal.fill")
+                .font(.title3.bold())
+                .foregroundStyle(.green)
+        case "No":
+            Label("NO — Condition not met", systemImage: "xmark.seal.fill")
+                .font(.title3.bold())
+                .foregroundStyle(.red)
+        default:
+            Label("Awaiting resolution…", systemImage: "clock")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func failedView(error: Error) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -256,6 +261,12 @@ struct CreateStreamView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
+    }
+
+    private func timeString(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
     }
 
     private func statusView(icon: String, text: String) -> some View {

@@ -37,7 +37,9 @@
       "Bash(npm show:*)",
       "WebFetch(domain:www.npmjs.com)",
       "Bash(npm pack:*)",
-      "WebFetch(domain:docs.machinefi.com)"
+      "WebFetch(domain:docs.machinefi.com)",
+      "Bash(ngrok version:*)",
+      "Bash(npx ts-node:*)"
     ]
   }
 }

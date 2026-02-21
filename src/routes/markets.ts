@@ -121,7 +121,7 @@ router.post("/live", async (req: Request, res: Response) => {
     const webhookUrl = `${config.webhookBaseUrl}/webhook/machinefi`;
     let jobId: string | null = null;
     try {
-      jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl);
+      jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl, 5);
       jobStore.addJob(jobId, marketId, deadline);
       console.log(`MachineFi job ${jobId} started for market ${marketId}`);
     } catch (e: any) {
@@ -253,6 +253,28 @@ router.post("/:id/resolve", async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error("Resolve market error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /markets/:id/bets — List all bets for a market
+router.get("/:id/bets", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const bets = await chain.getMarketBets(id);
+
+    const yesTotal = bets
+      .filter((b) => b.betYes)
+      .reduce((sum, b) => sum + BigInt(b.amountWei), 0n)
+      .toString();
+    const noTotal = bets
+      .filter((b) => !b.betYes)
+      .reduce((sum, b) => sum + BigInt(b.amountWei), 0n)
+      .toString();
+
+    res.json({ marketId: id, bets, yesTotal, noTotal, count: bets.length });
+  } catch (e: any) {
+    console.error("Get bets error:", e);
     res.status(500).json({ error: e.message });
   }
 });

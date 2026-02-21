@@ -23,17 +23,6 @@ final class RTMPStreamingService {
     
     init() {
         rtmpStream = RTMPStream(connection: rtmpConnection)
-
-        // 480p portrait @ 500 kbps video + 64 kbps audio — keeps Mux usage low
-        var videoSettings = VideoCodecSettings()
-        videoSettings.videoSize = CGSize(width: 480, height: 854)
-        videoSettings.bitRate = 500_000
-        videoSettings.frameInterval = 0  // match capture fps (30)
-        rtmpStream.videoSettings = videoSettings
-
-        var audioSettings = AudioCodecSettings()
-        audioSettings.bitRate = 64_000
-        rtmpStream.audioSettings = audioSettings
     }
     
     // Expose stream for camera preview
@@ -51,10 +40,17 @@ final class RTMPStreamingService {
             throw StreamingError.micNotFound
         }
         
+        // 480p portrait @ 500 kbps video + 64 kbps audio — keeps Mux usage low
+        try await rtmpStream.setVideoSettings(VideoCodecSettings(
+            videoSize: CGSize(width: 480, height: 854),
+            bitRate: 500_000
+        ))
+        try await rtmpStream.setAudioSettings(AudioCodecSettings(bitRate: 64_000))
+
         // Attach devices to the mixer
         try await mixer.attachVideo(camera)
         try await mixer.attachAudio(mic)
-        
+
         // Add the stream as an output of the mixer
         await mixer.addOutput(rtmpStream)
     }
