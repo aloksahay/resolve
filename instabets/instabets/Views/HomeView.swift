@@ -75,7 +75,12 @@ struct VideoShortView: View {
 
             BetPollOverlay(poll: poll)
                 .padding(.horizontal, 16)
-                .padding(.bottom, 48)
+                .padding(.bottom, 100)
+
+            CountdownBadge()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.top, 56)
+                .padding(.trailing, 16)
         }
         .onAppear(perform: setupPlayer)
         .onDisappear(perform: cleanup)
@@ -100,6 +105,46 @@ struct VideoShortView: View {
         player?.pause()
         looper = nil
         player = nil
+    }
+}
+
+// MARK: - CountdownBadge
+
+struct CountdownBadge: View {
+    @State private var secondsLeft: Int = Int.random(in: 15...60)
+    @State private var timer: Timer?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(.red)
+                .frame(width: 8, height: 8)
+
+            Text("\(secondsLeft)s")
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(secondsLeft <= 10 ? .red : .white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+            .onAppear(perform: startTimer)
+            .onDisappear(perform: stopTimer)
+    }
+
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            if secondsLeft > 0 {
+                secondsLeft -= 1
+            } else {
+                secondsLeft = Int.random(in: 15...60)
+            }
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
 }
 

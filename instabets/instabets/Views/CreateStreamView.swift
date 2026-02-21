@@ -14,12 +14,12 @@ import AVFoundation
 // MARK: - MTHKView SwiftUI Wrapper
 
 struct CameraPreview: UIViewRepresentable {
-    let stream: RTMPStream
+    let attach: (MTHKView) async -> Void
 
     func makeUIView(context: Context) -> MTHKView {
         let view = MTHKView(frame: .zero)
         view.videoGravity = .resizeAspectFill
-        Task { await stream.addOutput(view) }
+        Task { await attach(view) }
         return view
     }
 
@@ -63,7 +63,8 @@ struct CreateStreamView: View {
                 }
             }
             .background { cameraBackground }
-            .navigationTitle("Go Live")
+            .task { await viewModel.prepareCamera() }
+            .navigationTitle("InstaBet Now!")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showPlayer) {
                 playerDestination
@@ -76,8 +77,8 @@ struct CreateStreamView: View {
     @ViewBuilder
     private var cameraBackground: some View {
         switch viewModel.phase {
-        case .readyToGo, .live:
-            CameraPreview(stream: viewModel.stream)
+        case .idle, .readyToGo, .live:
+            CameraPreview(attach: { view in await viewModel.attachPreview(view) })
                 .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         default:

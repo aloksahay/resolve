@@ -25,9 +25,11 @@ final class RTMPStreamingService {
         rtmpStream = RTMPStream(connection: rtmpConnection)
     }
     
-    // Expose stream for camera preview
-    var stream: RTMPStream {
-        rtmpStream
+    var stream: RTMPStream { rtmpStream }
+
+    // Preview must be attached to the mixer, not the stream
+    func attachPreview(_ view: MTHKView) async {
+        await mixer.addOutput(view)
     }
     
     // MARK: - Setup

@@ -27,12 +27,20 @@ final class CreateStreamViewModel {
     private let recordingService = LocalRecordingService()
     private let backendService = BackendService()
     
-    var stream: RTMPStream {
-        rtmpService.stream
+    var stream: RTMPStream { rtmpService.stream }
+
+    func attachPreview(_ view: MTHKView) async {
+        await rtmpService.attachPreview(view)
     }
     
+    // MARK: - Step 0: Attach camera immediately on appear
+
+    func prepareCamera() async {
+        try? await rtmpService.setupDevices()
+    }
+
     // MARK: - Step 1: Prepare
-    
+
     func prepareStream() async {
         phase = .preparing
         errorMessage = nil
@@ -61,22 +69,22 @@ final class CreateStreamViewModel {
             // Start publishing to Mux
             try await rtmpService.startPublishing(streamKey: streamKey)
 
-            // Register prediction market on the backend
-            let streamURL = "\(Config.muxPlaybackBase)/\(playbackID).m3u8"
-            Task {
-                do {
-                    let result = try await backendService.createLiveMarket(
-                        condition: condition,
-                        streamURL: streamURL,
-                        durationSeconds: streamDuration
-                    )
-                    self.marketStorageRoot = result.storageRoot
-                    self.marketId = result.marketId
-                    print("✅ Market created: id=\(result.marketId) tx=\(result.txHash)")
-                } catch {
-                    print("⚠️ Backend market creation failed: \(error.localizedDescription)")
-                }
-            }
+            // TODO: re-enable once streams are stable
+            // let streamURL = "\(Config.muxPlaybackBase)/\(playbackID).m3u8"
+            // Task {
+            //     do {
+            //         let result = try await backendService.createLiveMarket(
+            //             condition: condition,
+            //             streamURL: streamURL,
+            //             durationSeconds: streamDuration
+            //         )
+            //         self.marketStorageRoot = result.storageRoot
+            //         self.marketId = result.marketId
+            //         print("✅ Market created: id=\(result.marketId) tx=\(result.txHash)")
+            //     } catch {
+            //         print("⚠️ Backend market creation failed: \(error.localizedDescription)")
+            //     }
+            // }
 
             // Countdown 60 seconds
             for remaining in stride(from: streamDuration, through: 0, by: -1) {
@@ -97,17 +105,7 @@ final class CreateStreamViewModel {
     func finishStream() async {
         try? await rtmpService.stopPublishing()
         let _ = recordingService.stopRecording()
-
-        let playbackID = currentPlaybackID
-        let cid = marketStorageRoot.isEmpty ? "pending" : marketStorageRoot
-
-        guard let id = marketId else {
-            phase = .complete(cid: cid, playbackID: playbackID)
-            return
-        }
-
-        phase = .resolving
-        await pollOutcome(marketId: id, playbackID: playbackID, cid: cid)
+        reset()
     }
 
     private func pollOutcome(marketId: Int, playbackID: String, cid: String) async {
