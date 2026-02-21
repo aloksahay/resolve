@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { config } from "../config";
-import { provider } from "./chain";
+import { provider, resolveMarket, getMarket } from "./chain";
 
 const BET_ABI = [
   "function placeBet(uint256 marketId, bool betYes) external payable",
@@ -14,7 +14,18 @@ const npc2 = config.npcBettor2Key
   ? new ethers.Wallet(config.npcBettor2Key, provider)
   : null;
 
-export async function placeNpcBets(marketId: number): Promise<{
+/**
+ * Determine outcome from question keywords.
+ * Returns true (YES), false (NO), or undefined (no auto-resolve).
+ */
+function keywordOutcome(question: string): boolean | undefined {
+  const q = question.toLowerCase();
+  if (q.includes("fall")) return true;
+  if (q.includes("cat"))  return false;
+  return undefined;
+}
+
+export async function placeNpcBets(marketId: number, question?: string): Promise<{
   npc1TxHash: string | null;
   npc2TxHash: string | null;
 }> {
@@ -41,6 +52,24 @@ export async function placeNpcBets(marketId: number): Promise<{
     const receipt2 = await tx2.wait();
     npc2TxHash = receipt2.hash;
     console.log(`NPC2 bet NO on market ${marketId}: ${npc2TxHash}`);
+
+    // Keyword-based auto-resolve 4 seconds after NPC2's bet lands
+    if (question !== undefined) {
+      const outcomeYes = keywordOutcome(question);
+      if (outcomeYes !== undefined) {
+        console.log(`[NPC] Market ${marketId} will resolve ${outcomeYes ? "YES" : "NO"} in 4s (keyword match)`);
+        setTimeout(async () => {
+          try {
+            const market = await getMarket(marketId);
+            if (market.outcome !== "Pending") return;
+            const txHash = await resolveMarket(marketId, outcomeYes);
+            console.log(`[NPC] Market ${marketId} resolved ${outcomeYes ? "YES" : "NO"}, tx=${txHash}`);
+          } catch (e: any) {
+            console.error(`[NPC] Auto-resolve failed for market ${marketId}:`, e.message);
+          }
+        }, 4000);
+      }
+    }
   } catch (e: any) {
     console.error(`NPC bets failed for market ${marketId}:`, e.message);
   }

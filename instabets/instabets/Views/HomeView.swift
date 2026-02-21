@@ -11,7 +11,6 @@ import SwiftUI
 
 struct DemoScenario {
     let question: String
-    let streamURL: String
     let localVideo: String  // filename in bundle (no extension)
     let resolveAfter: Int   // seconds (on-chain timer)
     let resolveYes: Bool
@@ -20,14 +19,12 @@ struct DemoScenario {
 private let scenarios: [DemoScenario] = [
     DemoScenario(
         question: "Will the skateboarder hit someone?",
-        streamURL: "https://www.youtube.com/shorts/AQTAKC69dXc",
         localVideo: "skate",
         resolveAfter: 8,
         resolveYes: true
     ),
     DemoScenario(
         question: "Does the cat knock over the paper wall?",
-        streamURL: "https://www.youtube.com/shorts/AIt99qiWWnM",
         localVideo: "cat",
         resolveAfter: 12,
         resolveYes: false
@@ -37,21 +34,18 @@ private let scenarios: [DemoScenario] = [
 private let nowScenarios: [DemoScenario] = [
     DemoScenario(
         question: "Will the spoon break?",
-        streamURL: "https://www.youtube.com/shorts/AQTAKC69dXc",
         localVideo: "1",
         resolveAfter: 15,
         resolveYes: true
     ),
     DemoScenario(
         question: "Does he catch it?",
-        streamURL: "https://www.youtube.com/shorts/AIt99qiWWnM",
         localVideo: "2",
         resolveAfter: 20,
         resolveYes: false
     ),
     DemoScenario(
         question: "Will they both fall?",
-        streamURL: "https://www.youtube.com/shorts/AQTAKC69dXc",
         localVideo: "3",
         resolveAfter: 18,
         resolveYes: true
@@ -83,7 +77,7 @@ final class DemoMarketState {
             do {
                 let result = try await backend.createLiveMarket(
                     condition: scenario.question,
-                    streamURL: scenario.streamURL,
+                    streamURL: "",  // No streaming - just using local videos
                     durationSeconds: scenario.resolveAfter + 30,
                     autoResolveAfter: scenario.resolveAfter,
                     autoResolveYes: scenario.resolveYes
@@ -372,7 +366,7 @@ struct LocalVideoView: UIViewRepresentable {
         view.backgroundColor = .black
         view.playerLayer.videoGravity = .resizeAspectFill
 
-        if let url = Bundle.main.url(forResource: name, withExtension: "mp4", subdirectory: "Assets") {
+        if let url = Bundle.main.url(forResource: name, withExtension: "mp4") {
             let item = AVPlayerItem(url: url)
             let player = AVPlayer(playerItem: item)
             context.coordinator.player = player

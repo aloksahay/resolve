@@ -6,7 +6,6 @@
 
 import AVFoundation
 import SwiftUI
-import WebKit
 
 // MARK: - Looping local background video
 
@@ -24,7 +23,30 @@ private struct LoopingVideoBackground: UIViewRepresentable {
         let view = PlayerView()
         view.backgroundColor = .black
         view.playerLayer.videoGravity = .resizeAspectFill
+        
+        // Set up initial video
+        setupVideo(name: name, view: view, context: context)
+        
+        return view
+    }
 
+    func updateUIView(_ uiView: PlayerView, context: Context) {
+        // Only change video if the name actually changed
+        if context.coordinator.currentVideoName != name {
+            setupVideo(name: name, view: uiView, context: context)
+        }
+    }
+    
+    private func setupVideo(name: String, view: PlayerView, context: Context) {
+        // Clean up old player if it exists
+        context.coordinator.looper?.disableLooping()
+        context.coordinator.looper = nil
+        context.coordinator.player?.pause()
+        context.coordinator.player = nil
+        
+        // Set up new video
+        context.coordinator.currentVideoName = name
+        
         if let url = Bundle.main.url(forResource: name, withExtension: "mp4") {
             let item = AVPlayerItem(url: url)
             let player = AVQueuePlayer()
@@ -35,58 +57,13 @@ private struct LoopingVideoBackground: UIViewRepresentable {
         } else {
             print("⚠️ Could not find video file '\(name).mp4' in bundle")
         }
-        return view
     }
-
-    func updateUIView(_ uiView: PlayerView, context: Context) {}
 
     class Coordinator {
         var player: AVQueuePlayer?
         var looper: AVPlayerLooper?
+        var currentVideoName: String?
     }
-}
-
-// MARK: - YouTube embed background
-
-private struct YouTubeBackground: UIViewRepresentable {
-    let videoID: String
-
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.scrollView.isScrollEnabled = false
-        webView.isOpaque = false
-        webView.backgroundColor = .black
-        webView.scrollView.backgroundColor = .black
-
-        let html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-            <style>
-                * { margin: 0; padding: 0; background: #000; }
-                html, body { width: 100%; height: 100%; overflow: hidden; }
-                iframe { width: 100%; height: 100%; border: none; }
-            </style>
-        </head>
-        <body>
-            <iframe
-                src="https://www.youtube.com/embed/\(videoID)?autoplay=1&mute=1&loop=1&playlist=\(videoID)&controls=0&playsinline=1&rel=0&showinfo=0&enablejsapi=1"
-                allow="autoplay; encrypted-media"
-                allowfullscreen>
-            </iframe>
-        </body>
-        </html>
-        """
-        webView.loadHTMLString(html, baseURL: URL(string: "https://www.youtube.com"))
-        return webView
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {}
 }
 
 // MARK: - Live bet overlay
@@ -159,47 +136,34 @@ private struct LiveBetOverlay: View {
     }
 }
 
-// MARK: - Helpers
-
-private func extractYouTubeID(from urlString: String) -> String? {
-    guard let url = URL(string: urlString) else { return nil }
-    if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
-       let v = items.first(where: { $0.name == "v" })?.value { return v }
-    let parts = url.pathComponents
-    if let idx = parts.firstIndex(of: "shorts"), idx + 1 < parts.count { return parts[idx + 1] }
-    if url.host == "youtu.be" { return parts.dropFirst().first }
-    return nil
-}
-
 // MARK: - Main view
 
 struct CreateStreamView: View {
     @State private var viewModel = CreateStreamViewModel()
     @FocusState private var focusedField: Field?
 
-    enum Field { case condition, streamURL }
-
-    private var youtubeID: String? { extractYouTubeID(from: viewModel.streamURL) }
+    enum Field { case condition }
 
     private var isComplete: Bool {
         if case .complete = viewModel.phase { return true }
         return false
     }
 
+    private var backgroundVideo: (name: String, blur: Bool) {
+        let lower = viewModel.condition.lowercased()
+        if lower.contains("fall") || lower.contains("skate") { return ("skate", false) }
+        if lower.contains("cat") { return ("cat", false) }
+        return ("bg", true)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background: YouTube video (no blur) if URL is set, else blurred bg.mp4
-                if let videoID = youtubeID {
-                    YouTubeBackground(videoID: videoID)
-                        .ignoresSafeArea()
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                } else {
-                    LoopingVideoBackground(name: "bg")
-                        .ignoresSafeArea()
-                        .blur(radius: 12)
-                    Color.black.opacity(0.45).ignoresSafeArea()
-                }
+                // Background: video matched to bet title
+                LoopingVideoBackground(name: backgroundVideo.name)
+                    .ignoresSafeArea()
+                    .blur(radius: backgroundVideo.blur ? 12 : 0)
+                Color.black.opacity(backgroundVideo.blur ? 0.45 : 0.25).ignoresSafeArea()
 
                 // Keyboard dismiss
                 Color.clear
@@ -278,19 +242,6 @@ struct CreateStreamView: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
             .foregroundStyle(.white)
             .focused($focusedField, equals: .condition)
-
-            TextField(
-                "YouTube link",
-                text: $viewModel.streamURL
-            )
-            .keyboardType(.URL)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
-            .padding(16)
-            .frame(minHeight: 52)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .foregroundStyle(.white)
-            .focused($focusedField, equals: .streamURL)
         }
     }
 

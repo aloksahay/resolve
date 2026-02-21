@@ -12,7 +12,6 @@ import Observation
 final class CreateStreamViewModel {
     var phase: StreamPhase = .idle
     var condition: String = ""
-    var streamURL: String = ""
     var errorMessage: String?
 
     // Live bet pool data (wei strings, polled after market creation)
@@ -23,8 +22,7 @@ final class CreateStreamViewModel {
     private var pollingTask: Task<Void, Never>?
 
     var canSubmit: Bool {
-        condition.trimmingCharacters(in: .whitespaces).count >= 5 &&
-        streamURL.trimmingCharacters(in: .whitespaces).count > 5
+        condition.trimmingCharacters(in: .whitespaces).count >= 5
     }
 
     func createMarket() async {
@@ -35,7 +33,7 @@ final class CreateStreamViewModel {
         do {
             let result = try await backendService.createLiveMarket(
                 condition: condition,
-                streamURL: streamURL
+                streamURL: ""  // No streaming - just using local videos
             )
             phase = .complete(marketId: result.marketId)
             startPollingBets(marketId: result.marketId)

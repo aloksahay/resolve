@@ -67,8 +67,8 @@ router.post("/", async (req: Request, res: Response) => {
       npcAddresses: npc.getNpcAddresses(),
     });
 
-    // Non-blocking NPC auto-bets (one YES, one NO)
-    npc.placeNpcBets(marketId).catch((e) =>
+    // Non-blocking NPC auto-bets (one YES, one NO) + keyword-based auto-resolve
+    npc.placeNpcBets(marketId, body.question).catch((e) =>
       console.error("NPC auto-bet error:", e.message)
     );
   } catch (e: any) {
@@ -120,23 +120,9 @@ router.post("/live", async (req: Request, res: Response) => {
     // Create market on-chain
     const { marketId, txHash } = await chain.createMarket(body.condition, deadline, storageRoot);
 
-    // Resolution: demo auto-resolve OR MachineFi live monitor
+    // MachineFi live monitor (only when auto_resolve params are not provided)
     let jobId: string | null = null;
-    if (body.auto_resolve_after != null && body.auto_resolve_yes != null) {
-      const resolveAfterMs = body.auto_resolve_after * 1000;
-      const outcomeYes = body.auto_resolve_yes;
-      setTimeout(async () => {
-        try {
-          const market = await chain.getMarket(marketId);
-          if (market.outcome !== "Pending") return;
-          const txHash = await chain.resolveMarket(marketId, outcomeYes);
-          console.log(`[Demo] Market ${marketId} resolved ${outcomeYes ? "YES" : "NO"}, tx=${txHash}`);
-        } catch (e: any) {
-          console.error(`[Demo] Auto-resolve failed for market ${marketId}:`, e.message);
-        }
-      }, resolveAfterMs);
-      console.log(`[Demo] Market ${marketId} will auto-resolve ${outcomeYes ? "YES" : "NO"} in ${body.auto_resolve_after}s`);
-    } else {
+    if (body.auto_resolve_after == null || body.auto_resolve_yes == null) {
       const webhookUrl = `${config.webhookBaseUrl}/webhook/machinefi`;
       try {
         jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl, 5);
@@ -157,8 +143,8 @@ router.post("/live", async (req: Request, res: Response) => {
       deadline,
     });
 
-    // Non-blocking NPC auto-bets
-    npc.placeNpcBets(marketId).catch((e) =>
+    // Non-blocking NPC auto-bets + keyword-based auto-resolve
+    npc.placeNpcBets(marketId, body.condition).catch((e) =>
       console.error("NPC auto-bet error:", e.message)
     );
   } catch (e: any) {
