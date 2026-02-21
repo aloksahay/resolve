@@ -150,6 +150,7 @@ struct CreateStreamView: View {
     }
 
     private var backgroundVideo: (name: String, blur: Bool) {
+        guard isComplete else { return ("bg", true) }
         let lower = viewModel.condition.lowercased()
         if lower.contains("fall") || lower.contains("skate") { return ("skate", false) }
         if lower.contains("cat") { return ("cat", false) }

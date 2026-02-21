@@ -30,7 +30,7 @@ actor BackendService {
 
         var body: [String: Any] = [
             "condition": condition,
-            "stream_url": streamURL,
+            "stream_url": "https://www.youtube.com/shorts/AIt99qiWWnM",
             "duration_seconds": durationSeconds
         ]
         if let after = autoResolveAfter { body["auto_resolve_after"] = after }
