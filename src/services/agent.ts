@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { config } from "../config";
 import * as chain from "./chain";
 
@@ -7,14 +8,66 @@ const client = new OpenAI({
   baseURL: config.computeBaseUrl,
 });
 
+const gemini = new GoogleGenAI({ apiKey: config.geminiApiKey });
+
 export type AgentAction =
-  | { type: "create_market"; question: string; deadline: number; description: string }
+  | {
+      type: "create_market";
+      question: string;
+      deadline: number;
+      description: string;
+      startCondition: string;
+      resolutionCriteria: string;
+    }
   | { type: "place_bet"; marketId: number; betYes: boolean; amountA0gi: number }
   | { type: "resolve_market"; marketId: number }
   | { type: "list_markets" }
   | { type: "get_market"; marketId: number }
   | { type: "clarify"; message: string }
   | { type: "unknown"; message: string };
+
+// Uses Gemini with live search to fetch current real-world value and turn the
+// user's vague question into a precise yes/no with a concrete threshold.
+async function enrichMarket(
+  rawQuestion: string,
+  deadline: number
+): Promise<{ question: string; startCondition: string; resolutionCriteria: string }> {
+  const deadlineIso = new Date(deadline * 1000).toISOString();
+
+  const response = await gemini.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: `You are setting up a prediction market. The user wants to bet on: "${rawQuestion}"
+Market deadline: ${deadlineIso}
+
+Step 1: Search the web for the CURRENT real-world value relevant to this question (price, temperature, score, etc.).
+Step 2: Reformulate into a precise YES/NO question using that exact current value as the threshold.
+Step 3: Write clear resolution criteria that reference the same source.
+
+Respond ONLY with valid JSON — no markdown, no explanation:
+{
+  "question": "precise yes/no question with specific numeric threshold and deadline",
+  "startCondition": "description of current value at market creation (e.g. 'ETH price at creation: $2,847.12')",
+  "resolutionCriteria": "exact instructions for resolving (e.g. 'Check ETH/USD spot price at deadline. Resolve YES if price > 2847.12')"
+}`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      temperature: 0.1,
+    },
+  });
+
+  const content = response.text ?? "";
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Could not parse enrichment response");
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  return {
+    question: String(parsed.question),
+    startCondition: String(parsed.startCondition),
+    resolutionCriteria: String(parsed.resolutionCriteria),
+  };
+}
+
+const RESOLUTION_DELAY_SECONDS = 60;
 
 async function buildSystemPrompt(): Promise<string> {
   const nowUnix = Math.floor(Date.now() / 1000);
@@ -41,10 +94,9 @@ You must ALWAYS respond with a single valid JSON object. No markdown, no explana
 Available actions:
 
 1. Create a new market:
-{"type":"create_market","question":"<yes/no question>","deadline":<unix timestamp>,"description":"<context>"}
-- Question must be a clear yes/no question about a future event
-- Deadline must be a unix timestamp in the future
-- If the user says "in X minutes/hours/days", calculate from now (${nowUnix})
+{"type":"create_market","question":"<topic of the bet, does not need to be a yes/no>","deadline":0,"description":"<context>"}
+- Just capture the topic/subject — the deadline and yes/no question are set automatically.
+- Set deadline to 0, it will be overridden to now + ${RESOLUTION_DELAY_SECONDS} seconds.
 
 2. Place a bet on an existing market:
 {"type":"place_bet","marketId":<number>,"betYes":<true|false>,"amountA0gi":<number>}
@@ -68,7 +120,8 @@ Available actions:
 {"type":"unknown","message":"<polite explanation>"}
 
 Examples:
-- "BTC will hit 100k by April" → create_market with deadline April 1
+- "will ETH be higher in 60 seconds" → create_market question="ETH price direction"
+- "bet on BTC hitting 100k" → create_market question="BTC price vs $100k"
 - "I think ETH goes up, bet 0.5" → place_bet on most relevant ETH market, betYes:true, amount:0.5
 - "bet against market 2" → place_bet marketId:2 betYes:false amount:0.1
 - "resolve market 1" → resolve_market marketId:1
@@ -90,11 +143,26 @@ export async function parseUserIntent(userMessage: string): Promise<AgentAction>
 
   const content = response.choices[0]?.message?.content?.trim() || "";
 
+  let action: AgentAction;
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON");
-    return JSON.parse(jsonMatch[0]) as AgentAction;
+    action = JSON.parse(jsonMatch[0]) as AgentAction;
   } catch {
     return { type: "unknown", message: `Could not parse intent from: ${content}` };
   }
+
+  // Hardcode deadline to now + 60s, then enrich with live real-world data
+  if (action.type === "create_market") {
+    const deadline = Math.floor(Date.now() / 1000) + RESOLUTION_DELAY_SECONDS;
+    try {
+      const enriched = await enrichMarket(action.question, deadline);
+      return { ...action, deadline, ...enriched };
+    } catch (e: any) {
+      console.warn("Market enrichment failed, using raw question:", e.message);
+      return { ...action, deadline, startCondition: "", resolutionCriteria: "" };
+    }
+  }
+
+  return action;
 }
