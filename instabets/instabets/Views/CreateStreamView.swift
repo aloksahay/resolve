@@ -61,9 +61,9 @@ struct CreateStreamView: View {
         switch viewModel.phase {
         case .readyToGo, .live:
             CameraPreview(stream: viewModel.stream)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.container, edges: .top)
         default:
-            Color.black.ignoresSafeArea()
+            Color.black.ignoresSafeArea(.container, edges: .top)
         }
     }
 

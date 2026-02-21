@@ -16,6 +16,7 @@ struct ContentView: View {
                 CreateStreamView()
             }
         }
+        .ignoresSafeArea(.keyboard)
     }
 }
 
