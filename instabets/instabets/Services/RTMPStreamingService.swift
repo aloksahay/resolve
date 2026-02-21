@@ -58,8 +58,7 @@ final class RTMPStreamingService {
     // MARK: - Streaming
     
     func startPublishing(streamKey: String) async throws {
-        let rtmpURL = "\(Config.muxIngestBase)/\(streamKey)"
-        _ = try await rtmpConnection.connect(rtmpURL)
+        _ = try await rtmpConnection.connect(Config.muxIngestBase)
         _ = try await rtmpStream.publish(streamKey)
     }
     

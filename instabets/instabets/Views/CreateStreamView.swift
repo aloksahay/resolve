@@ -35,9 +35,6 @@ struct CreateStreamView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Camera preview is always behind content when live
-                cameraBackground
-
                 VStack {
                     Spacer()
                     phaseContent
@@ -45,6 +42,9 @@ struct CreateStreamView: View {
                     actionBar
                 }
                 .padding()
+                .onTapGesture {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
 
                 // Countdown timer — top-right corner during live
                 if case .live(let seconds, _) = viewModel.phase {
@@ -62,6 +62,7 @@ struct CreateStreamView: View {
                     }
                 }
             }
+            .background { cameraBackground }
             .navigationTitle("Go Live")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showPlayer) {
@@ -77,9 +78,10 @@ struct CreateStreamView: View {
         switch viewModel.phase {
         case .readyToGo, .live:
             CameraPreview(stream: viewModel.stream)
-                .ignoresSafeArea(.container, edges: .top)
+                .ignoresSafeArea()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         default:
-            Color.black.ignoresSafeArea(.container, edges: .top)
+            Color.black.ignoresSafeArea()
         }
     }
 
@@ -119,7 +121,7 @@ struct CreateStreamView: View {
     private var actionBar: some View {
         switch viewModel.phase {
         case .idle:
-            Button("Create Stream") {
+            Button("Create InstaBet") {
                 Task { await viewModel.prepareStream() }
             }
             .buttonStyle(.borderedProminent)
@@ -160,23 +162,11 @@ struct CreateStreamView: View {
     // MARK: - Phase-specific views
 
     private var idleView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "video.badge.plus")
-                .font(.system(size: 64))
-                .foregroundStyle(.white)
-            Text("60-second Live Stream")
-                .font(.title2.bold())
-                .foregroundStyle(.white)
-            Text("Stream goes live instantly. Your video is\nstored on 0G Network after it ends.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.gray)
-
-            TextField("What's your prediction? (e.g. I will do 10 pushups)", text: $viewModel.condition, axis: .vertical)
-                .lineLimit(2...4)
-                .padding(12)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .foregroundStyle(.white)
-        }
+        TextField("What's your prediction? (e.g. I will do 10 pushups)", text: $viewModel.condition, axis: .vertical)
+            .lineLimit(2...4)
+            .padding(12)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .foregroundStyle(.white)
     }
 
     private func readyView(streamKey: String, playbackID: String) -> some View {
@@ -299,4 +289,5 @@ struct CreateStreamView: View {
 
 #Preview {
     CreateStreamView()
+        .preferredColorScheme(.dark)
 }

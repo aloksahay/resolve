@@ -35,6 +35,11 @@
 	<string>instabets uses your camera to broadcast 60-second live streams.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>instabets uses your microphone to include audio in your live stream.</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>systemBackground</string>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

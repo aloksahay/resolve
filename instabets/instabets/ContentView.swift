@@ -9,17 +9,20 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         TabView {
-            Tab("Home", systemImage: "house.fill") {
-                HomeView()
-            }
-            Tab("Go Live", systemImage: "video.circle.fill") {
-                CreateStreamView()
-            }
+            CreateStreamView()
+                .tabItem {
+                    Label("Go Live", systemImage: "video.circle.fill")
+                }
+            HomeView()
+                .tabItem {
+                    Label("Instabet Now", systemImage: "house.fill")
+                }
         }
-        .ignoresSafeArea(.keyboard)
+        .preferredColorScheme(.dark)
     }
 }
 
 #Preview {
     ContentView()
+        .preferredColorScheme(.dark)
 }
