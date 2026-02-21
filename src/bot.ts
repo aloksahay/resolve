@@ -6,6 +6,7 @@ dotenv.config();
 import * as chain from "./services/chain";
 import * as resolver from "./services/resolver";
 import * as npc from "./services/npc";
+import * as storage from "./services/storage";
 import { parseUserIntent } from "./services/agent";
 import { config } from "./config";
 
@@ -13,6 +14,10 @@ const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 // Per-user pending bet state: { marketId, betYes }
 const pendingBets = new Map<number, { marketId: number; betYes: boolean }>();
+
+function esc(text: string) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function formatMarket(m: Awaited<ReturnType<typeof chain.getMarket>>) {
   const deadline = new Date(m.deadline * 1000).toUTCString();
@@ -23,31 +28,27 @@ function formatMarket(m: Awaited<ReturnType<typeof chain.getMarket>>) {
   const noOdds = total > 0 ? ((Number(noEth) / total) * 100).toFixed(1) : "50.0";
 
   return [
-    `📊 *Market #${m.id}*`,
-    `❓ ${escMd(m.question)}`,
-    `⏰ Deadline: ${escMd(deadline)}`,
-    `✅ YES pool: ${escMd(yesEth)} A0GI \\(${escMd(yesOdds)}%\\)`,
-    `❌ NO pool: ${escMd(noEth)} A0GI \\(${escMd(noOdds)}%\\)`,
-    `🔖 Status: *${m.outcome}*`,
+    `📊 <b>Market #${m.id}</b>`,
+    `❓ ${esc(m.question)}`,
+    `⏰ Deadline: ${esc(deadline)}`,
+    `✅ YES pool: ${yesEth} A0GI (${yesOdds}%)`,
+    `❌ NO pool: ${noEth} A0GI (${noOdds}%)`,
+    `🔖 Status: <b>${m.outcome}</b>`,
   ].join("\n");
-}
-
-function escMd(text: string) {
-  return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, "\\$&");
 }
 
 // /start
 bot.command("start", async (ctx) => {
   await ctx.reply(
-    "🎯 *Prediction Market Bot*\n\n" +
+    "🎯 <b>Prediction Market Bot</b>\n\n" +
     "Commands:\n" +
-    "/markets \\- List all open markets\n" +
-    "/market \\<id\\> \\- View a specific market\n" +
-    "/create \\<question\\> \\<deadline\\_unix\\> \\- Create a new market\n" +
-    "/bet \\<id\\> \\- Place a YES or NO bet\n" +
-    "/resolve \\<id\\> \\- Trigger AI resolution\n" +
-    "/balances \\- Show NPC wallet balances",
-    { parse_mode: "MarkdownV2" }
+    "/markets - List all open markets\n" +
+    "/market &lt;id&gt; - View a specific market\n" +
+    "/create &lt;question&gt; &lt;deadline_unix&gt; - Create a new market\n" +
+    "/bet &lt;id&gt; - Place a YES or NO bet\n" +
+    "/resolve &lt;id&gt; - Trigger AI resolution\n" +
+    "/balances - Show NPC wallet balances",
+    { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
   );
 });
 
@@ -64,7 +65,8 @@ bot.command("markets", async (ctx) => {
         .text("✅ Bet YES", `bet:${m.id}:yes`)
         .text("❌ Bet NO", `bet:${m.id}:no`);
       await ctx.reply(formatMarket(m), {
-        parse_mode: "MarkdownV2",
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
         reply_markup: m.outcome === "Pending" ? kb : undefined,
       });
     }
@@ -83,7 +85,8 @@ bot.command("market", async (ctx) => {
       .text("✅ Bet YES", `bet:${id}:yes`)
       .text("❌ Bet NO", `bet:${id}:no`);
     await ctx.reply(formatMarket(m), {
-      parse_mode: "MarkdownV2",
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       reply_markup: m.outcome === "Pending" ? kb : undefined,
     });
   } catch (e: any) {
@@ -108,23 +111,30 @@ bot.command("create", async (ctx) => {
     return ctx.reply("Deadline must be in the future.");
   }
 
-  await ctx.reply("⏳ Creating market on-chain...");
+  await ctx.reply("⏳ Uploading metadata to 0G Storage and creating market on-chain...");
   try {
-    const { marketId, txHash } = await chain.createMarket(question, deadline, "0x" + "0".repeat(64));
+    let storageRoot = "0x" + "0".repeat(64);
+    try {
+      storageRoot = await storage.uploadJson({ question, deadline });
+    } catch (e: any) {
+      console.warn("0G Storage upload failed, proceeding without metadata:", e.message);
+    }
+
+    const { marketId, txHash } = await chain.createMarket(question, deadline, storageRoot);
     await ctx.reply(
-      `✅ Market #${marketId} created\\!\n` +
-      `❓ ${escMd(question)}\n` +
-      `🔗 Tx: \`${txHash}\``,
-      { parse_mode: "MarkdownV2" }
+      `✅ Market #${marketId} created!\n` +
+      `❓ ${esc(question)}\n` +
+      `📦 Storage: <code>${storageRoot.slice(0, 18)}…</code>\n` +
+      `🔗 Tx: <code>${txHash}</code>`,
+      { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
     );
 
-    // NPC auto-bets in background
     npc.placeNpcBets(marketId).then(({ npc1TxHash, npc2TxHash }) => {
       ctx.reply(
-        `🤖 NPC bets placed on market #${marketId}\\!\n` +
-        `✅ NPC YES: \`${npc1TxHash ?? "failed"}\`\n` +
-        `❌ NPC NO: \`${npc2TxHash ?? "failed"}\``,
-        { parse_mode: "MarkdownV2" }
+        `🤖 NPC bets placed on market #${marketId}!\n` +
+        `✅ NPC YES: <code>${npc1TxHash ?? "failed"}</code>\n` +
+        `❌ NPC NO: <code>${npc2TxHash ?? "failed"}</code>`,
+        { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
       ).catch(() => {});
     }).catch(() => {});
   } catch (e: any) {
@@ -132,7 +142,7 @@ bot.command("create", async (ctx) => {
   }
 });
 
-// /bet <id>  (or inline button triggers)
+// /bet <id>
 bot.command("bet", async (ctx) => {
   const id = Number(ctx.match?.trim());
   if (isNaN(id)) return ctx.reply("Usage: /bet <id>");
@@ -153,9 +163,9 @@ bot.callbackQuery(/^bet:(\d+):(yes|no)$/, async (ctx) => {
   pendingBets.set(userId, { marketId, betYes });
 
   await ctx.reply(
-    `You're betting *${betYes ? "YES ✅" : "NO ❌"}* on market #${marketId}\\.\n` +
-    `Reply with the amount in A0GI \\(e\\.g\\. \`0\\.1\`\\):`,
-    { parse_mode: "MarkdownV2" }
+    `You're betting <b>${betYes ? "YES ✅" : "NO ❌"}</b> on market #${marketId}.\n` +
+    `Reply with the amount in A0GI (e.g. <code>0.1</code>):`,
+    { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
   );
 });
 
@@ -164,12 +174,11 @@ bot.on("message:text", async (ctx) => {
   const userId = ctx.from.id;
   const text = ctx.message.text.trim();
 
-  // If user is in the middle of a button-triggered bet, expect a number
   const pending = pendingBets.get(userId);
   if (pending) {
     const amount = parseFloat(text);
     if (isNaN(amount) || amount <= 0) {
-      return ctx.reply("Invalid amount. Please reply with a number like `0\\.1`", { parse_mode: "MarkdownV2" });
+      return ctx.reply("Invalid amount. Please reply with a number like 0.1");
     }
     pendingBets.delete(userId);
     const amountWei = ethers.parseEther(amount.toString()).toString();
@@ -177,8 +186,8 @@ bot.on("message:text", async (ctx) => {
     try {
       const txHash = await chain.placeBet(pending.marketId, pending.betYes, amountWei);
       await ctx.reply(
-        `✅ Bet placed\\!\nMarket: #${pending.marketId}\nSide: *${pending.betYes ? "YES" : "NO"}*\nAmount: ${escMd(String(amount))} A0GI\n🔗 Tx: \`${txHash}\``,
-        { parse_mode: "MarkdownV2" }
+        `✅ Bet placed!\nMarket: #${pending.marketId}\nSide: <b>${pending.betYes ? "YES" : "NO"}</b>\nAmount: ${amount} A0GI\n🔗 Tx: <code>${txHash}</code>`,
+        { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
       );
     } catch (e: any) {
       await ctx.reply(`Error: ${e.message}`);
@@ -186,11 +195,10 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // Skip commands (handled separately above)
   if (text.startsWith("/")) return;
 
   // Natural language → agent
-  const thinking = await ctx.reply("🤖 Thinking...");
+  await ctx.reply("🤖 Thinking...");
   try {
     const action = await parseUserIntent(text);
 
@@ -198,7 +206,7 @@ bot.on("message:text", async (ctx) => {
       case "list_markets": {
         const markets = await chain.getAllMarkets();
         if (markets.length === 0) {
-          await ctx.reply("No markets yet. Try: *\"Will ETH hit $3000 by April?\"* to create one.", { parse_mode: "MarkdownV2" });
+          await ctx.reply('No markets yet. Try: "Will ETH hit $3000 by April?" to create one.');
           break;
         }
         for (const m of markets) {
@@ -206,7 +214,8 @@ bot.on("message:text", async (ctx) => {
             .text("✅ Bet YES", `bet:${m.id}:yes`)
             .text("❌ Bet NO", `bet:${m.id}:no`);
           await ctx.reply(formatMarket(m), {
-            parse_mode: "MarkdownV2",
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
             reply_markup: m.outcome === "Pending" ? kb : undefined,
           });
         }
@@ -219,25 +228,65 @@ bot.on("message:text", async (ctx) => {
           .text("✅ Bet YES", `bet:${m.id}:yes`)
           .text("❌ Bet NO", `bet:${m.id}:no`);
         await ctx.reply(formatMarket(m), {
-          parse_mode: "MarkdownV2",
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
           reply_markup: m.outcome === "Pending" ? kb : undefined,
         });
         break;
       }
 
       case "create_market": {
-        await ctx.reply(`⏳ Creating market on\\-chain...\n❓ ${escMd(action.question)}`, { parse_mode: "MarkdownV2" });
-        const { marketId, txHash } = await chain.createMarket(action.question, action.deadline, "0x" + "0".repeat(64));
+        const preview = [
+          `⏳ Creating market on-chain...`,
+          `❓ ${esc(action.question)}`,
+          action.startCondition ? `📍 <b>Start:</b> ${esc(action.startCondition)}` : "",
+          action.resolutionCriteria ? `📋 <b>Resolves:</b> ${esc(action.resolutionCriteria)}` : "",
+          `⏰ Resolves in 60 seconds`,
+        ].filter(Boolean).join("\n");
+        await ctx.reply(preview, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+
+        let storageRoot = "0x" + "0".repeat(64);
+        try {
+          storageRoot = await storage.uploadJson({
+            question: action.question,
+            deadline: action.deadline,
+            description: action.description,
+            startCondition: action.startCondition,
+            resolutionCriteria: action.resolutionCriteria,
+          });
+        } catch (e: any) {
+          console.warn("0G Storage upload failed, proceeding without metadata:", e.message);
+        }
+
+        const { marketId, txHash } = await chain.createMarket(action.question, action.deadline, storageRoot);
         await ctx.reply(
-          `✅ Market #${marketId} created\\!\n❓ ${escMd(action.question)}\n⏰ Deadline: ${escMd(new Date(action.deadline * 1000).toUTCString())}\n🔗 Tx: \`${txHash}\``,
-          { parse_mode: "MarkdownV2" }
+          `✅ <b>Market #${marketId} created!</b>\n❓ ${esc(action.question)}\n📍 ${esc(action.startCondition)}\n📋 ${esc(action.resolutionCriteria)}\n📦 Storage: <code>${storageRoot.slice(0, 18)}…</code>\n🔗 Tx: <code>${txHash}</code>`,
+          { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
         );
         npc.placeNpcBets(marketId).then(({ npc1TxHash, npc2TxHash }) => {
           ctx.reply(
-            `🤖 NPC bets placed\\!\n✅ NPC YES: \`${npc1TxHash ?? "failed"}\`\n❌ NPC NO: \`${npc2TxHash ?? "failed"}\``,
-            { parse_mode: "MarkdownV2" }
+            `🤖 NPC bets placed!\n✅ NPC YES: <code>${npc1TxHash ?? "failed"}</code>\n❌ NPC NO: <code>${npc2TxHash ?? "failed"}</code>`,
+            { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
           ).catch(() => {});
         }).catch(() => {});
+
+        // Auto-resolve after deadline
+        setTimeout(async () => {
+          try {
+            const res = await fetch(`http://localhost:${config.port}/markets/${marketId}/resolve`, { method: "POST" });
+            const data = await res.json() as any;
+            if (data.resolved) {
+              await ctx.reply(
+                `🏁 <b>Market #${marketId} auto-resolved!</b>\nOutcome: <b>${data.outcome}</b>\nConfidence: ${(data.confidence * 100).toFixed(0)}%\nReasoning: ${esc(data.reasoning)}\n🔗 Tx: <code>${data.txHash}</code>`,
+                { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
+              );
+            } else {
+              await ctx.reply(`⚠️ Market #${marketId} could not auto-resolve: ${esc(data.reason ?? "unknown")}`);
+            }
+          } catch (e: any) {
+            await ctx.reply(`⚠️ Auto-resolve failed for market #${marketId}: ${e.message}`);
+          }
+        }, 60_000);
         break;
       }
 
@@ -246,8 +295,8 @@ bot.on("message:text", async (ctx) => {
         await ctx.reply(`⏳ Placing ${action.amountA0gi} A0GI ${action.betYes ? "YES ✅" : "NO ❌"} bet on market #${action.marketId}...`);
         const txHash = await chain.placeBet(action.marketId, action.betYes, amountWei);
         await ctx.reply(
-          `✅ Bet placed\\!\nMarket: #${action.marketId}\nSide: *${action.betYes ? "YES ✅" : "NO ❌"}*\nAmount: ${escMd(String(action.amountA0gi))} A0GI\n🔗 Tx: \`${txHash}\``,
-          { parse_mode: "MarkdownV2" }
+          `✅ Bet placed!\nMarket: #${action.marketId}\nSide: <b>${action.betYes ? "YES ✅" : "NO ❌"}</b>\nAmount: ${action.amountA0gi} A0GI\n🔗 Tx: <code>${txHash}</code>`,
+          { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
         );
         break;
       }
@@ -255,35 +304,35 @@ bot.on("message:text", async (ctx) => {
       case "resolve_market": {
         const market = await chain.getMarket(action.marketId);
         if (market.outcome !== "Pending") {
-          await ctx.reply(`Market #${action.marketId} is already resolved: *${market.outcome}*`, { parse_mode: "MarkdownV2" });
+          await ctx.reply(`Market #${action.marketId} is already resolved: <b>${market.outcome}</b>`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
           break;
         }
         await ctx.reply(`⏳ Asking AI to resolve market #${action.marketId}...`);
         const evidence = await resolver.resolveWithAI(market, null);
         if (!resolver.meetsConfidenceThreshold(evidence)) {
           await ctx.reply(
-            `⚠️ AI confidence too low \\(${evidence.result.confidence}\\) to resolve\\.\nReasoning: ${escMd(evidence.result.reasoning)}`,
-            { parse_mode: "MarkdownV2" }
+            `⚠️ AI confidence too low (${evidence.result.confidence}) to resolve.\nReasoning: ${esc(evidence.result.reasoning)}`,
+            { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
           );
           break;
         }
         const txHash = await chain.resolveMarket(action.marketId, evidence.result.outcome);
         await ctx.reply(
-          `🏁 Market #${action.marketId} resolved\\!\nOutcome: *${evidence.result.outcome ? "YES ✅" : "NO ❌"}*\nConfidence: ${(evidence.result.confidence * 100).toFixed(0)}%\nReasoning: ${escMd(evidence.result.reasoning)}\n🔗 Tx: \`${txHash}\``,
-          { parse_mode: "MarkdownV2" }
+          `🏁 Market #${action.marketId} resolved!\nOutcome: <b>${evidence.result.outcome ? "YES ✅" : "NO ❌"}</b>\nConfidence: ${(evidence.result.confidence * 100).toFixed(0)}%\nReasoning: ${esc(evidence.result.reasoning)}\n🔗 Tx: <code>${txHash}</code>`,
+          { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
         );
         break;
       }
 
       case "clarify":
-        await ctx.reply(`❓ ${escMd(action.message)}`, { parse_mode: "MarkdownV2" });
+        await ctx.reply(`❓ ${esc(action.message)}`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
         break;
 
       default:
-        await ctx.reply(`🤷 ${escMd((action as any).message || "I didn't understand that.")}`, { parse_mode: "MarkdownV2" });
+        await ctx.reply((action as any).message || "I didn't understand that.");
     }
   } catch (e: any) {
-    await ctx.reply(`Error: ${escMd(e.message)}`, { parse_mode: "MarkdownV2" });
+    await ctx.reply(`Error: ${e.message}`);
   }
 });
 
@@ -296,27 +345,27 @@ bot.command("resolve", async (ctx) => {
   try {
     const market = await chain.getMarket(id);
     if (market.outcome !== "Pending") {
-      return ctx.reply(`Market #${id} is already resolved: *${market.outcome}*`, { parse_mode: "MarkdownV2" });
+      return ctx.reply(`Market #${id} is already resolved: <b>${market.outcome}</b>`, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
     }
 
     const evidence = await resolver.resolveWithAI(market, null);
 
     if (!resolver.meetsConfidenceThreshold(evidence)) {
       return ctx.reply(
-        `⚠️ AI confidence too low \\(${evidence.result.confidence}\\) to resolve\\.\n` +
-        `Reasoning: ${escMd(evidence.result.reasoning)}`,
-        { parse_mode: "MarkdownV2" }
+        `⚠️ AI confidence too low (${evidence.result.confidence}) to resolve.\n` +
+        `Reasoning: ${esc(evidence.result.reasoning)}`,
+        { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
       );
     }
 
     const txHash = await chain.resolveMarket(id, evidence.result.outcome);
     await ctx.reply(
-      `🏁 Market #${id} resolved\\!\n` +
-      `Outcome: *${evidence.result.outcome ? "YES ✅" : "NO ❌"}*\n` +
+      `🏁 Market #${id} resolved!\n` +
+      `Outcome: <b>${evidence.result.outcome ? "YES ✅" : "NO ❌"}</b>\n` +
       `Confidence: ${(evidence.result.confidence * 100).toFixed(0)}%\n` +
-      `Reasoning: ${escMd(evidence.result.reasoning)}\n` +
-      `🔗 Tx: \`${txHash}\``,
-      { parse_mode: "MarkdownV2" }
+      `Reasoning: ${esc(evidence.result.reasoning)}\n` +
+      `🔗 Tx: <code>${txHash}</code>`,
+      { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
     );
   } catch (e: any) {
     await ctx.reply(`Error: ${e.message}`);
@@ -333,10 +382,10 @@ bot.command("balances", async (ctx) => {
       npc2 ? provider.getBalance(npc2) : Promise.resolve(0n),
     ]);
     await ctx.reply(
-      `🤖 *NPC Wallet Balances*\n` +
-      `NPC1 \\(YES\\): ${escMd(ethers.formatEther(b1))} A0GI\n` +
-      `NPC2 \\(NO\\): ${escMd(ethers.formatEther(b2))} A0GI`,
-      { parse_mode: "MarkdownV2" }
+      `🤖 <b>NPC Wallet Balances</b>\n` +
+      `NPC1 (YES): ${ethers.formatEther(b1)} A0GI\n` +
+      `NPC2 (NO): ${ethers.formatEther(b2)} A0GI`,
+      { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
     );
   } catch (e: any) {
     await ctx.reply(`Error: ${e.message}`);

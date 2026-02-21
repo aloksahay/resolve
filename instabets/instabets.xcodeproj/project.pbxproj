@@ -1,0 +1,421 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5C5099122F49D148008E3D5D /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099112F49D148008E3D5D /* HaishinKit */; };
+		5C5099142F49D148008E3D5D /* MoQTHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099132F49D148008E3D5D /* MoQTHaishinKit */; };
+		5C5099162F49D148008E3D5D /* RTCHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099152F49D148008E3D5D /* RTCHaishinKit */; };
+		5C5099182F49D148008E3D5D /* RTMPHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099172F49D148008E3D5D /* RTMPHaishinKit */; };
+		5C50991A2F49D148008E3D5D /* SRTHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099192F49D148008E3D5D /* SRTHaishinKit */; };
+		5C5099662F49D5C7008E3D5D /* MuxUploadSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5099652F49D5C7008E3D5D /* MuxUploadSDK */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5C5098E42F498017008E3D5D /* instabets.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = instabets.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5C5099632F49D2C6008E3D5D /* Exceptions for "instabets" folder in "instabets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5C5098E32F498017008E3D5D /* instabets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5C5098E62F498017008E3D5D /* instabets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5C5099632F49D2C6008E3D5D /* Exceptions for "instabets" folder in "instabets" target */,
+			);
+			path = instabets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5C5098E12F498017008E3D5D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5C5099122F49D148008E3D5D /* HaishinKit in Frameworks */,
+				5C5099662F49D5C7008E3D5D /* MuxUploadSDK in Frameworks */,
+				5C50991A2F49D148008E3D5D /* SRTHaishinKit in Frameworks */,
+				5C5099182F49D148008E3D5D /* RTMPHaishinKit in Frameworks */,
+				5C5099162F49D148008E3D5D /* RTCHaishinKit in Frameworks */,
+				5C5099142F49D148008E3D5D /* MoQTHaishinKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5C5098DB2F498017008E3D5D = {
+			isa = PBXGroup;
+			children = (
+				5C5098E62F498017008E3D5D /* instabets */,
+				5C5098E52F498017008E3D5D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5C5098E52F498017008E3D5D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5C5098E42F498017008E3D5D /* instabets.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5C5098E32F498017008E3D5D /* instabets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5C5098EF2F498018008E3D5D /* Build configuration list for PBXNativeTarget "instabets" */;
+			buildPhases = (
+				5C5098E02F498017008E3D5D /* Sources */,
+				5C5098E12F498017008E3D5D /* Frameworks */,
+				5C5098E22F498017008E3D5D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5C5098E62F498017008E3D5D /* instabets */,
+			);
+			name = instabets;
+			packageProductDependencies = (
+				5C5099112F49D148008E3D5D /* HaishinKit */,
+				5C5099132F49D148008E3D5D /* MoQTHaishinKit */,
+				5C5099152F49D148008E3D5D /* RTCHaishinKit */,
+				5C5099172F49D148008E3D5D /* RTMPHaishinKit */,
+				5C5099192F49D148008E3D5D /* SRTHaishinKit */,
+				5C5099652F49D5C7008E3D5D /* MuxUploadSDK */,
+			);
+			productName = instabets;
+			productReference = 5C5098E42F498017008E3D5D /* instabets.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5C5098DC2F498017008E3D5D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					5C5098E32F498017008E3D5D = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
+			};
+			buildConfigurationList = 5C5098DF2F498017008E3D5D /* Build configuration list for PBXProject "instabets" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5C5098DB2F498017008E3D5D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */,
+				5C5099642F49D5C7008E3D5D /* XCRemoteSwiftPackageReference "swift-upload-sdk" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5C5098E52F498017008E3D5D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5C5098E32F498017008E3D5D /* instabets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5C5098E22F498017008E3D5D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5C5098E02F498017008E3D5D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5C5098ED2F498018008E3D5D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TS4RX6E9KD;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5C5098EE2F498018008E3D5D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TS4RX6E9KD;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		5C5098F02F498018008E3D5D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TS4RX6E9KD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = instabets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.instabets.instabets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5C5098F12F498018008E3D5D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TS4RX6E9KD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = instabets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.instabets.instabets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5C5098DF2F498017008E3D5D /* Build configuration list for PBXProject "instabets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C5098ED2F498018008E3D5D /* Debug */,
+				5C5098EE2F498018008E3D5D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5C5098EF2F498018008E3D5D /* Build configuration list for PBXNativeTarget "instabets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C5098F02F498018008E3D5D /* Debug */,
+				5C5098F12F498018008E3D5D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/HaishinKit/HaishinKit.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.4;
+			};
+		};
+		5C5099642F49D5C7008E3D5D /* XCRemoteSwiftPackageReference "swift-upload-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/muxinc/swift-upload-sdk";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5C5099112F49D148008E3D5D /* HaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */;
+			productName = HaishinKit;
+		};
+		5C5099132F49D148008E3D5D /* MoQTHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */;
+			productName = MoQTHaishinKit;
+		};
+		5C5099152F49D148008E3D5D /* RTCHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */;
+			productName = RTCHaishinKit;
+		};
+		5C5099172F49D148008E3D5D /* RTMPHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */;
+			productName = RTMPHaishinKit;
+		};
+		5C5099192F49D148008E3D5D /* SRTHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099102F49D148008E3D5D /* XCRemoteSwiftPackageReference "HaishinKit" */;
+			productName = SRTHaishinKit;
+		};
+		5C5099652F49D5C7008E3D5D /* MuxUploadSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5099642F49D5C7008E3D5D /* XCRemoteSwiftPackageReference "swift-upload-sdk" */;
+			productName = MuxUploadSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5C5098DC2F498017008E3D5D /* Project object */;
+}
