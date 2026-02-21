@@ -84,6 +84,9 @@ const CreateLiveMarketSchema = z.object({
   condition: z.string().min(5).max(500),
   stream_url: z.string().url(),
   duration_seconds: z.number().int().positive().default(60),
+  // Demo mode: skip MachineFi, resolve on-chain after a fixed delay
+  auto_resolve_after: z.number().int().positive().optional(),
+  auto_resolve_yes: z.boolean().optional(),
 });
 
 // POST /markets/live — Create a market monitored by MachineFi live stream
@@ -117,15 +120,31 @@ router.post("/live", async (req: Request, res: Response) => {
     // Create market on-chain
     const { marketId, txHash } = await chain.createMarket(body.condition, deadline, storageRoot);
 
-    // Start MachineFi live monitor
-    const webhookUrl = `${config.webhookBaseUrl}/webhook/machinefi`;
+    // Resolution: demo auto-resolve OR MachineFi live monitor
     let jobId: string | null = null;
-    try {
-      jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl, 5);
-      jobStore.addJob(jobId, marketId, deadline);
-      console.log(`MachineFi job ${jobId} started for market ${marketId}`);
-    } catch (e: any) {
-      console.error("MachineFi startLiveMonitor failed:", e.message);
+    if (body.auto_resolve_after != null && body.auto_resolve_yes != null) {
+      const resolveAfterMs = body.auto_resolve_after * 1000;
+      const outcomeYes = body.auto_resolve_yes;
+      setTimeout(async () => {
+        try {
+          const market = await chain.getMarket(marketId);
+          if (market.outcome !== "Pending") return;
+          const txHash = await chain.resolveMarket(marketId, outcomeYes);
+          console.log(`[Demo] Market ${marketId} resolved ${outcomeYes ? "YES" : "NO"}, tx=${txHash}`);
+        } catch (e: any) {
+          console.error(`[Demo] Auto-resolve failed for market ${marketId}:`, e.message);
+        }
+      }, resolveAfterMs);
+      console.log(`[Demo] Market ${marketId} will auto-resolve ${outcomeYes ? "YES" : "NO"} in ${body.auto_resolve_after}s`);
+    } else {
+      const webhookUrl = `${config.webhookBaseUrl}/webhook/machinefi`;
+      try {
+        jobId = await machinefi.startLiveMonitor(body.stream_url, body.condition, webhookUrl, 5);
+        jobStore.addJob(jobId, marketId, deadline);
+        console.log(`MachineFi job ${jobId} started for market ${marketId}`);
+      } catch (e: any) {
+        console.error("MachineFi startLiveMonitor failed:", e.message);
+      }
     }
 
     res.status(201).json({
@@ -277,6 +296,17 @@ router.get("/:id/bets", async (req: Request, res: Response) => {
     console.error("Get bets error:", e);
     res.status(500).json({ error: e.message });
   }
+});
+
+// POST /markets/:id/register-job — Manually link a MachineFi jobId to a market (recovery endpoint)
+router.post("/:id/register-job", async (req: Request, res: Response) => {
+  const marketId = Number(req.params.id);
+  const { jobId } = req.body;
+  if (!jobId) return res.status(400).json({ error: "jobId required" });
+  const market = await chain.getMarket(marketId).catch(() => null);
+  if (!market) return res.status(404).json({ error: "Market not found" });
+  jobStore.addJob(jobId, marketId, market.deadline);
+  res.json({ ok: true, jobId, marketId });
 });
 
 // GET /markets/:id/resolution — Get resolution evidence

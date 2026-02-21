@@ -11,7 +11,8 @@ router.post("/machinefi", async (req: Request, res: Response) => {
   res.sendStatus(200);
 
   const event = req.body?.event ?? req.body?.type;
-  const jobId = req.body?.job_id;
+  // job_id can be top-level or nested inside data (error events)
+  const jobId = req.body?.job_id ?? req.body?.data?.job_id;
 
   console.log(`[MachineFi webhook] event=${event} job_id=${jobId}`);
 

@@ -7,16 +7,25 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var selectedTab: Int = 0
+    @State private var createViewID = UUID()
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             CreateStreamView()
+                .id(createViewID)
                 .tabItem {
-                    Label("Go Live", systemImage: "video.circle.fill")
+                    Label("Create Bet", systemImage: "plus.circle.fill")
                 }
-            HomeView()
+                .tag(0)
+            NowView(onNewBet: {
+                createViewID = UUID()
+                selectedTab = 0
+            })
                 .tabItem {
                     Label("Instabet Now", systemImage: "house.fill")
                 }
+                .tag(1)
         }
         .preferredColorScheme(.dark)
     }

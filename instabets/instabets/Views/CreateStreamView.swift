@@ -3,153 +3,311 @@
 //  CreateStreamView.swift
 //  instabets
 //
-//  Full streaming UI. Drives all branches from CreateStreamViewModel.phase.
-//
 
-@preconcurrency import HaishinKit
-import RTMPHaishinKit
-import SwiftUI
 import AVFoundation
+import SwiftUI
+import WebKit
 
-// MARK: - MTHKView SwiftUI Wrapper
+// MARK: - Looping local background video
 
-struct CameraPreview: UIViewRepresentable {
-    let attach: (MTHKView) async -> Void
+private class PlayerView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+}
 
-    func makeUIView(context: Context) -> MTHKView {
-        let view = MTHKView(frame: .zero)
-        view.videoGravity = .resizeAspectFill
-        Task { await attach(view) }
+private struct LoopingVideoBackground: UIViewRepresentable {
+    let name: String
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.backgroundColor = .black
+        view.playerLayer.videoGravity = .resizeAspectFill
+
+        if let url = Bundle.main.url(forResource: name, withExtension: "mp4", subdirectory: "Assets") {
+            let item = AVPlayerItem(url: url)
+            let player = AVQueuePlayer()
+            context.coordinator.looper = AVPlayerLooper(player: player, templateItem: item)
+            context.coordinator.player = player
+            view.playerLayer.player = player
+            player.play()
+        }
         return view
     }
 
-    func updateUIView(_ uiView: MTHKView, context: Context) {}
+    func updateUIView(_ uiView: PlayerView, context: Context) {}
+
+    class Coordinator {
+        var player: AVQueuePlayer?
+        var looper: AVPlayerLooper?
+    }
 }
 
-// MARK: - Create Stream View
+// MARK: - YouTube embed background
+
+private struct YouTubeBackground: UIViewRepresentable {
+    let videoID: String
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.scrollView.isScrollEnabled = false
+        webView.isOpaque = false
+        webView.backgroundColor = .black
+        webView.scrollView.backgroundColor = .black
+
+        let html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+            <style>
+                * { margin: 0; padding: 0; background: #000; }
+                html, body { width: 100%; height: 100%; overflow: hidden; }
+                iframe { width: 100%; height: 100%; border: none; }
+            </style>
+        </head>
+        <body>
+            <iframe
+                src="https://www.youtube.com/embed/\(videoID)?autoplay=1&mute=1&loop=1&playlist=\(videoID)&controls=0&playsinline=1&rel=0&showinfo=0&enablejsapi=1"
+                allow="autoplay; encrypted-media"
+                allowfullscreen>
+            </iframe>
+        </body>
+        </html>
+        """
+        webView.loadHTMLString(html, baseURL: URL(string: "https://www.youtube.com"))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+}
+
+// MARK: - Live bet overlay
+
+private struct LiveBetOverlay: View {
+    let question: String
+    let yesWei: String
+    let noWei: String
+
+    private var yesA0GI: Double { (Double(yesWei) ?? 0) / 1e18 }
+    private var noA0GI: Double { (Double(noWei) ?? 0) / 1e18 }
+    private var total: Double { yesA0GI + noA0GI }
+    private var yesPercent: Int { total > 0 ? Int((yesA0GI / total) * 100) : 50 }
+    private var noPercent: Int { 100 - yesPercent }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(question)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .shadow(radius: 4)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.ultraThinMaterial)
+
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(red: 0.4, green: 0.9, blue: 0.75).opacity(0.25))
+                        .frame(width: geo.size.width * CGFloat(yesPercent) / 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    HStack(spacing: 0) {
+                        VStack(spacing: 2) {
+                            Text("YES")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color(red: 0.4, green: 0.95, blue: 0.8))
+                            Text(String(format: "%.2f A0GI", yesA0GI))
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("\(yesPercent)%")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        Rectangle()
+                            .fill(.white.opacity(0.2))
+                            .frame(width: 1, height: 44)
+
+                        VStack(spacing: 2) {
+                            Text("NO")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color(red: 1.0, green: 0.55, blue: 0.45))
+                            Text(String(format: "%.2f A0GI", noA0GI))
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("\(noPercent)%")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding(.vertical, 10)
+                }
+            }
+            .frame(height: 72)
+        }
+    }
+}
+
+// MARK: - Helpers
+
+private func extractYouTubeID(from urlString: String) -> String? {
+    guard let url = URL(string: urlString) else { return nil }
+    if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+       let v = items.first(where: { $0.name == "v" })?.value { return v }
+    let parts = url.pathComponents
+    if let idx = parts.firstIndex(of: "shorts"), idx + 1 < parts.count { return parts[idx + 1] }
+    if url.host == "youtu.be" { return parts.dropFirst().first }
+    return nil
+}
+
+// MARK: - Main view
 
 struct CreateStreamView: View {
     @State private var viewModel = CreateStreamViewModel()
-    @State private var showPlayer = false
+    @FocusState private var focusedField: Field?
+
+    enum Field { case condition, streamURL }
+
+    private var youtubeID: String? { extractYouTubeID(from: viewModel.streamURL) }
+
+    private var isComplete: Bool {
+        if case .complete = viewModel.phase { return true }
+        return false
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                VStack {
-                    Spacer()
-                    phaseContent
-                    Spacer()
-                    actionBar
-                }
-                .padding()
-                .onTapGesture {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                // Background: YouTube video (no blur) if URL is set, else blurred bg.mp4
+                if let videoID = youtubeID {
+                    YouTubeBackground(videoID: videoID)
+                        .ignoresSafeArea()
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                } else {
+                    LoopingVideoBackground(name: "bg")
+                        .ignoresSafeArea()
+                        .blur(radius: 12)
+                    Color.black.opacity(0.45).ignoresSafeArea()
                 }
 
-                // Countdown timer — top-right corner during live
-                if case .live(let seconds, _) = viewModel.phase {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Text(timeString(seconds))
-                                .font(.system(size: 22, weight: .bold, design: .monospaced))
-                                .foregroundStyle(.white)
-                                .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
-                                .padding(.trailing, 16)
-                                .padding(.top, 8)
-                        }
-                        Spacer()
+                // Keyboard dismiss
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea()
+                    .onTapGesture { focusedField = nil }
+
+                // Center content (form / status / success)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer().frame(height: 100)
+                        phaseContent
+                        Spacer().frame(height: isComplete ? 180 : 100)
+                        actionBar
                     }
+                    .frame(minHeight: UIScreen.main.bounds.height - 100)
+                    .padding()
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture { focusedField = nil }
+
+                // Bet overlay — pinned to bottom once market is created
+                if isComplete {
+                    VStack {
+                        Spacer()
+                        LiveBetOverlay(
+                            question: viewModel.condition,
+                            yesWei: viewModel.yesPoolWei,
+                            noWei: viewModel.noPoolWei
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 100)
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                    .allowsHitTesting(false)
                 }
             }
-            .background { cameraBackground }
-            .task { await viewModel.prepareCamera() }
             .navigationTitle("InstaBet Now!")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(isPresented: $showPlayer) {
-                playerDestination
-            }
         }
     }
 
-    // MARK: - Subviews
-
-    @ViewBuilder
-    private var cameraBackground: some View {
-        switch viewModel.phase {
-        case .idle, .readyToGo, .live:
-            CameraPreview(attach: { view in await viewModel.attachPreview(view) })
-                .ignoresSafeArea()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        default:
-            Color.black.ignoresSafeArea()
-        }
-    }
+    // MARK: - Phase content
 
     @ViewBuilder
     private var phaseContent: some View {
         switch viewModel.phase {
         case .idle:
-            idleView
-
-        case .preparing:
-            statusView(icon: "antenna.radiowaves.left.and.right", text: "Setting up stream…")
-
-        case .readyToGo(let streamKey, let playbackID):
-            readyView(streamKey: streamKey, playbackID: playbackID)
-
-        case .live(let seconds, let playbackID):
-            liveView(seconds: seconds, playbackID: playbackID)
-
-        case .compressing:
-            statusView(icon: "arrow.triangle.2.circlepath", text: "Compressing video…")
-
-        case .uploading:
-            statusView(icon: "icloud.and.arrow.up", text: "Uploading to 0G Network…")
-
-        case .resolving:
-            statusView(icon: "checkmark.seal", text: "Resolving prediction market…")
-
-        case .complete(let cid, let playbackID):
-            completeView(cid: cid, playbackID: playbackID)
-
+            idleForm
+        case .submitting:
+            statusView(icon: "antenna.radiowaves.left.and.right", text: "Creating market…")
+        case .complete:
+            VStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.green)
+                Text("Market Created!")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+            }
         case .failed(let error):
             failedView(error: error)
         }
     }
+
+    private var idleForm: some View {
+        VStack(spacing: 16) {
+            TextField(
+                "What's your prediction? (e.g. Bitcoin hits $100k today)",
+                text: $viewModel.condition,
+                axis: .vertical
+            )
+            .lineLimit(5...8)
+            .padding(16)
+            .frame(minHeight: 120, alignment: .topLeading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .foregroundStyle(.white)
+            .focused($focusedField, equals: .condition)
+
+            TextField(
+                "YouTube link",
+                text: $viewModel.streamURL
+            )
+            .keyboardType(.URL)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .padding(16)
+            .frame(minHeight: 52)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            .foregroundStyle(.white)
+            .focused($focusedField, equals: .streamURL)
+        }
+    }
+
+    // MARK: - Action bar
 
     @ViewBuilder
     private var actionBar: some View {
         switch viewModel.phase {
         case .idle:
             Button("Create InstaBet") {
-                Task { await viewModel.prepareStream() }
+                focusedField = nil
+                Task { await viewModel.createMarket() }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(viewModel.condition.trimmingCharacters(in: .whitespaces).count < 5)
-
-        case .readyToGo(let streamKey, let playbackID):
-            Button {
-                Task { await viewModel.goLive(streamKey: streamKey, playbackID: playbackID) }
-            } label: {
-                Label("Go Live", systemImage: "record.circle")
-                    .font(.headline)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .controlSize(.large)
-
-        case .live:
-            Button("Stop Early") {
-                Task { await viewModel.finishStream() }
-            }
-            .buttonStyle(.bordered)
-            .tint(.white)
+            .disabled(!viewModel.canSubmit)
 
         case .complete:
-            Button("Start New Stream") { viewModel.reset() }
-                .buttonStyle(.bordered)
+            EmptyView()
 
         case .failed:
             Button("Try Again") { viewModel.reset() }
@@ -160,84 +318,7 @@ struct CreateStreamView: View {
         }
     }
 
-    // MARK: - Phase-specific views
-
-    private var idleView: some View {
-        TextField("What's your prediction? (e.g. I will do 10 pushups)", text: $viewModel.condition, axis: .vertical)
-            .lineLimit(2...4)
-            .padding(12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .foregroundStyle(.white)
-    }
-
-    private func readyView(streamKey: String, playbackID: String) -> some View {
-        VStack(spacing: 12) {
-            Text("Ready")
-                .font(.largeTitle.bold())
-                .foregroundStyle(.white)
-            Text("Tap Go Live when you're ready.")
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func liveView(seconds: Int, playbackID: String) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(.red)
-                .frame(width: 10, height: 10)
-            Text("LIVE")
-                .font(.headline)
-                .foregroundStyle(.white)
-        }
-    }
-
-    private func completeView(cid: String, playbackID: String) -> some View {
-        VStack(spacing: 16) {
-            outcomeBadge(outcome: viewModel.marketOutcome)
-
-            Text("Stream Complete")
-                .font(.title2.bold())
-                .foregroundStyle(.white)
-
-            VStack(spacing: 4) {
-                Text("Stored on 0G Network")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(cid)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.gray)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-            }
-            .padding()
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-            Button {
-                showPlayer = true
-            } label: {
-                Label("Watch replay", systemImage: "play.circle.fill")
-            }
-            .buttonStyle(.bordered)
-        }
-    }
-
-    @ViewBuilder
-    private func outcomeBadge(outcome: String) -> some View {
-        switch outcome {
-        case "Yes":
-            Label("YES — Condition met!", systemImage: "checkmark.seal.fill")
-                .font(.title3.bold())
-                .foregroundStyle(.green)
-        case "No":
-            Label("NO — Condition not met", systemImage: "xmark.seal.fill")
-                .font(.title3.bold())
-                .foregroundStyle(.red)
-        default:
-            Label("Awaiting resolution…", systemImage: "clock")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-        }
-    }
+    // MARK: - Sub-views
 
     private func failedView(error: Error) -> some View {
         VStack(spacing: 12) {
@@ -254,36 +335,11 @@ struct CreateStreamView: View {
         }
     }
 
-    private func timeString(_ seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
-        return String(format: "%d:%02d", m, s)
-    }
-
     private func statusView(icon: String, text: String) -> some View {
         VStack(spacing: 16) {
-            ProgressView()
-                .tint(.white)
-                .scaleEffect(1.5)
-            Image(systemName: icon)
-                .font(.system(size: 36))
-                .foregroundStyle(.white)
-            Text(text)
-                .font(.headline)
-                .foregroundStyle(.white)
-        }
-    }
-
-    // MARK: - Player navigation
-
-    @ViewBuilder
-    private var playerDestination: some View {
-        switch viewModel.phase {
-        case .live(_, let id), .complete(_, let id):
-            StreamPlayerView(playbackID: id)
-        default:
-            Text("Stream not available")
-                .foregroundStyle(.secondary)
+            ProgressView().tint(.white).scaleEffect(1.5)
+            Image(systemName: icon).font(.system(size: 36)).foregroundStyle(.white)
+            Text(text).font(.headline).foregroundStyle(.white)
         }
     }
 }
